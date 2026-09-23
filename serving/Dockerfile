@@ -1,7 +1,7 @@
 # Harbormaster serving plane image. Build from the REPO ROOT (needs pyproject +
 # the serving/streaming package dirs):
 #   docker build -f serving/Dockerfile -t harbormaster-serving .
-FROM python:3.12-slim-bookworm AS build
+FROM python:3.14-slim-bookworm AS build
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /srv
 
