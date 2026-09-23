@@ -58,7 +58,7 @@ cdc = [
 # absent. RDP simplification is hand-rolled, no library. See lake-emr below for
 # the real, EMR-only, not-locally-runnable half.
 lake = [
-  "great-expectations>=0.18,<1.0",
+  "great-expectations>=1.23.1,<2.0",
   "pandas>=2.0",
   "scikit-learn>=1.3",
   "pyarrow>=15",
