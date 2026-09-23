@@ -10,4 +10,4 @@
 # remains above Lambda's direct-upload limit; layers do not increase that
 # uncompressed limit.
 pandas>=2.0
-pyarrow>=15
+pyarrow>=25.0.1
