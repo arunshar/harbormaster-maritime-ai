@@ -1,0 +1,38 @@
+version: 2
+
+# Dependabot opens update pull requests only. Every proposed change still goes
+# through review and the normal CI gate before it is merged.
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "pip"
+    directories:
+      - "/infra/lambda/drift_watch"
+      - "/infra/lambda/eks_teardown"
+      - "/infra/lambda/teardown"
+      - "/streaming/flink"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/serving"
+      - "/streaming/ingestor"
+      - "/cdc/connect"
+      - "/cdc/consumer"
+      - "/mlops/pidpm_container"
+      - "/mlops/pidpm_container/demo"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

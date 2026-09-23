@@ -1,0 +1,55 @@
+# Phase 5 gate 5.2: KEDA ScaledObject scaling the serving Deployment 0 -> N
+# on Phase 1 Kinesis lag. minReplicaCount: 0 is the scale-to-zero floor a
+# bare HPA cannot express.
+#
+# TRIGGER CHOICE, a recorded deviation from PHASE_5.md's locked-decision
+# wording: the spec names "the built-in aws-kinesis-stream trigger (scaling
+# on ... GetRecords.IteratorAgeMilliseconds)", but KEDA's aws-kinesis-stream
+# scaler scales on SHARD COUNT, not iterator age. A shard-count trigger can
+# never reach zero (streams always have >= 1 shard), so it would break both
+# the lag intent and the minReplicaCount: 0 floor. The aws-cloudwatch
+# trigger on the stream's GetRecords.IteratorAgeMilliseconds metric IS the
+# named lag signal, so that is what is authored; the deviation is recorded
+# here, in the commit body, and in the chain report.
+#
+# ONE ScaledObject with a triggers list, not one per signal: KEDA rejects a
+# second ScaledObject on the same scaleTargetRef, so the Phase 2 Kafka
+# trigger arrives as a JSON6902 patch appending to this list (see
+# with-cdc/), only when enable_phase2 infrastructure exists.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: serving-scaler
+  namespace: hm-serving
+  labels:
+    app: serving
+    app.kubernetes.io/part-of: harbormaster
+spec:
+  scaleTargetRef:
+    name: serving
+  minReplicaCount: 0
+  maxReplicaCount: 3
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+    - type: aws-cloudwatch
+      metadata:
+        namespace: AWS/Kinesis
+        metricName: GetRecords.IteratorAgeMilliseconds
+        dimensionName: StreamName
+        # The Phase 1 stream: "<project>-<environment>-ais-raw"
+        # (modules/kinesis/main.tf).
+        dimensionValue: harbormaster-base-ais-raw
+        metricStat: Maximum
+        metricCollectionTime: "300"
+        metricStatPeriod: "60"
+        # Scale out when the oldest unread record is > 30s behind. Keep the
+        # activation threshold above normal sub-5s iterator jitter so a
+        # healthy running Flink consumer does not defeat the zero baseline.
+        targetMetricValue: "30000"
+        activationTargetMetricValue: "5000"
+        minMetricValue: "0"
+        awsRegion: us-east-1
+        # The KEDA operator's IAM identity (IRSA at demo time) calls
+        # CloudWatch; pods never need AWS credentials to be scaled.
+        identityOwner: operator

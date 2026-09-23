@@ -1,0 +1,22 @@
+# Phase 5 gate 5.2: fixed NodePort Service for the Terraform-owned internal
+# NLB. The NLB target group attaches to the managed node group's Auto Scaling
+# group on port 30080, and its listener ARN feeds API Gateway's existing VPC
+# link. No Kubernetes load-balancer controller or untracked NLB is involved.
+apiVersion: v1
+kind: Service
+metadata:
+  name: serving
+  namespace: hm-serving
+  labels:
+    app: serving
+    app.kubernetes.io/part-of: harbormaster
+spec:
+  type: NodePort
+  selector:
+    app: serving
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      nodePort: 30080
+      protocol: TCP

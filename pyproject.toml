@@ -1,0 +1,188 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "harbormaster"
+version = "0.1.0"
+description = "Maritime anomaly detection from AIS reports to analyst review."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Arun Sharma" }]
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+  "prometheus-client>=0.20",
+  "structlog>=24.1",
+  "shapely>=2.0",
+  "numpy>=1.26",
+  "orjson>=3.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27", "ruff>=0.5", "pytest-cov>=5", "bandit>=1.7"]
+postgres = ["asyncpg>=0.29"]
+ingestor = ["boto3>=1.34", "websocket-client>=1.7"]
+console = ["streamlit>=1.30", "pandas>=2.0"]
+# Dependencies used by the deployed FastAPI image when Postgres registry/HITL
+# or the CDC-fed DynamoDB and Redis lookup paths are configured. Keep this
+# smaller than the full CDC consumer extra, which also installs Kafka,
+# PyIceberg, and PyArrow for a different process.
+serving-runtime = [
+  "asyncpg>=0.29",
+  "boto3>=1.34",
+  "redis>=5",
+]
+# The CDC consumer service (cdc/consumer, cdc/sinks). Unit tests need none of
+# these (all I/O is injected); the real service and the local kind stack do.
+cdc = [
+  "confluent-kafka>=2.3",
+  "boto3>=1.34",
+  "redis>=5",
+  "pyiceberg[sql-sqlite]>=0.7",
+  "pyarrow>=15",
+]
+# Phase 3 lake + promotion plane (lake/, mlops/). Unit tests need these:
+# great_expectations (a lightweight PandasDataset, no DataContext/Checkpoint
+# project scaffolding), pandas, scikit-learn (HDBSCAN waypoint clustering),
+# pyarrow, and pyiceberg[sql-sqlite]. The Phase 2A idempotency/compaction tests
+# (lake/tests/test_iceberg.py) exercise a real local SQLite-catalog + file
+# warehouse through pyiceberg, so it is a unit-test dependency now (previously
+# only pyarrow was needed, when the lake tests were schema-shape only). The
+# pyiceberg_core Rust extension for day/bucket partition transforms is NOT
+# required: run_lake_writer falls back to an identity partition when it is
+# absent. RDP simplification is hand-rolled, no library. See lake-emr below for
+# the real, EMR-only, not-locally-runnable half.
+lake = [
+  "great-expectations>=0.18,<1.0",
+  "pandas>=2.0",
+  "scikit-learn>=1.3",
+  "pyarrow>=15",
+  "pyiceberg[sql-sqlite]>=0.7",
+]
+# The real, AWS-showcase-only half of Phase 3: lake/backfill/job.py's PySpark
+# EMR entrypoint (needs a JVM this dev machine does not have, see the
+# no-local-JVM finding) and lake/offline_store.py's Feast AthenaOfflineStore
+# declarations (needs live Athena; Feast has no native/contrib Iceberg store,
+# so Athena, itself Iceberg-native, is the real integration point). Declared
+# but not installed/exercised locally; also NOT combined into the `lake`
+# extra above, since feast[aws] pulled numpy>=2 in a quick local check, which
+# conflicts with great_expectations' numpy<2 pin (tests still passed, but the
+# two are kept in separate extras rather than relying on that working by luck).
+lake-emr = [
+  "pyspark>=3.5",
+  "boto3>=1.34",
+  "feast[aws]>=0.40",
+]
+# mlops/ live-service half: wandb's real SDK (mlops/wandb_adapter.py falls
+# back to structlog without WANDB_API_KEY, so unit tests need none of this)
+# and boto3 for the gate 3.6 SageMaker client. Kept separate from `lake-emr`
+# (thematically EMR/Feast) though both are "declared, not locally exercised."
+mlops = [
+  "wandb>=0.17",
+  "boto3>=1.34",
+]
+# mlops/pidpm_container/demo/ only: the real, locally-testable, buildable
+# stand-in Pi-DPM container for the Phase 3 AWS showcase (docs/runbooks/
+# PHASE_3_AWS_SHOWCASE.md), distinct from the `mlops` extra above since this
+# one IS installed and unit-tested here, not just declared for a real image
+# build elsewhere.
+pidpm-demo = [
+  "flask>=3.0",
+  "gunicorn>=22.0",
+]
+
+# Map the in-repo source dirs onto importable top-level packages. The serving
+# runtime imports cdc.schema for registry and HITL DDL, so the wheel must carry
+# that package even when the CDC consumer extra is not installed.
+[tool.hatch.build.targets.wheel]
+packages = ["serving/app", "streaming/features", "cdc"]
+# don't ship test code into site-packages
+exclude = ["**/tests", "**/tests/**", "**/test_*.py"]
+
+[tool.pytest.ini_options]
+# "." puts the repo root on sys.path so the cdc package imports as `cdc`.
+pythonpath = ["serving", "streaming", "tests", "."]
+asyncio_mode = "auto"
+testpaths = ["serving/tests", "streaming/features/tests", "streaming/replay/tests", "streaming/ingestor/tests", "streaming/flink/tests", "serving/frontend/tests", "cdc/tests", "lake/tests", "mlops/tests", "mlops/pidpm_container/demo/tests", "tests/e2e"]
+markers = [
+  "postgres: integration test that needs a live Postgres (set HM_TEST_PG_DSN to run)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["serving", "streaming", "cdc", "lake", "mlops", "."]
+
+[tool.ruff.format]
+# Grandfathered format-debt: these files are not ruff-format-clean today
+# (measured 2026-07-06: 15 files, 249 lines). Three of them come from
+# GeoTrace-Agent. validator.py is byte-identical, rendezvous_finder.py carries
+# small import and type-annotation edits, and space_time_prism.py is a
+# regression-tested local fork.
+# The rest are pre-existing debt. Excluded from `ruff format --check` so the CI
+# format gate is green now while still enforcing format on every other file.
+# This is format-only; these files are still linted. Burn the list down.
+exclude = [
+  "cdc/tests/test_ddl.py",
+  "cdc/tests/test_envelope.py",
+  "cdc/tests/test_sinks.py",
+  "scripts/drill_p1_slot_bloat.py",
+  "serving/app/agents/rendezvous_finder.py",
+  "serving/app/agents/validator.py",
+  "serving/app/components/space_time_prism.py",
+  "serving/app/hitl.py",
+  "serving/tests/test_hitl.py",
+  "serving/tests/test_pidpm_client_score_full.py",
+  "serving/tests/test_registry.py",
+  "streaming/flink/job.py",
+  "streaming/ingestor/ingest.py",
+  "streaming/ingestor/tests/test_ingest.py",
+  "streaming/replay/generate.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# GeoTrace-derived files retain their upstream formatting. validator.py is
+# byte-identical to GeoTrace-Agent. space_time_reasoner.py and rendezvous_finder.py
+# differ only in imports, type annotations, one docstring line (in
+# space_time_reasoner.py), and a provenance sentence that each module docstring
+# adds. space_time_prism.py is a Harbormaster-maintained fork.
+"serving/app/components/space_time_prism.py" = ["E501"]
+"serving/app/agents/space_time_reasoner.py" = ["E501"]
+"serving/app/agents/rendezvous_finder.py" = ["E501"]
+"serving/app/agents/validator.py" = ["E501"]
+
+# ---- Coverage gate (engineering-standard ratchet) --------------------------
+# fail_under is a repo-wide floor for line+branch coverage across the five
+# source packages below, with test files excluded from the count. It blocks any
+# regression below that floor. The standard for any new or changed module is
+# 90% line+branch coverage, and review enforces it. Branch coverage is on, so
+# this figure is stricter than a line-only measurement.
+[tool.coverage.run]
+branch = true
+source = ["serving", "streaming", "cdc", "lake", "mlops"]
+omit = [
+  "*/tests/*",
+  "*/test_*.py",
+  "infra/lambda/*/build/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+skip_covered = true
+show_missing = true
+
+# ---- Bandit (SAST) ---------------------------------------------------------
+# Scans the source at default rule set (no rules blanket-disabled). Confirmed
+# benign findings carry a narrow, per-line `# nosec Bxxx  # reason` instead.
+# tests/, generated test handlers, and the vendored lambda build/ trees are
+# excluded (they are not shipped source).
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build", "infra/lambda"]

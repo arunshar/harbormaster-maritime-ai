@@ -1,0 +1,80 @@
+# Debezium Kafka Connect, local plane. A plain Deployment of the official
+# quay.io/debezium/connect image (Postgres connector preinstalled) pointed at
+# the Strimzi bootstrap. Deliberately NOT a Strimzi KafkaConnect CR: the CR
+# path needs an image build + in-cluster registry that buys nothing on a
+# single-node throwaway cluster (docs/phases/PHASE_2.md, decisions). The AWS
+# showcase runs this same image on ECS Fargate (modules/ecs_connect).
+# The connector itself is registered via the REST API by scripts/cdc_smoke.py
+# from cdc/connector/config.py, so the config is generated + validated code,
+# not YAML drift.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debezium-connect
+  namespace: hm-cdc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debezium-connect
+  template:
+    metadata:
+      labels:
+        app: debezium-connect
+    spec:
+      containers:
+        - name: connect
+          image: quay.io/debezium/connect:2.7
+          # Mirror the ECS secret-to-file bridge so the free local smoke tests
+          # the same DirectoryConfigProvider path as the AWS task. The value is
+          # the throwaway password already committed in 10-postgres.yaml.
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              umask 077
+              mkdir -p /dev/shm/secrets
+              printf '%s' "$HM_PG_PASSWORD" > /dev/shm/secrets/password
+              exec /docker-entrypoint.sh start
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: hm-kafka-bootstrap.hm-cdc.svc:9092
+            - name: GROUP_ID
+              value: hm-connect
+            - name: CONFIG_STORAGE_TOPIC
+              value: hm-connect-configs
+            - name: OFFSET_STORAGE_TOPIC
+              value: hm-connect-offsets
+            - name: STATUS_STORAGE_TOPIC
+              value: hm-connect-status
+            - name: HM_PG_PASSWORD
+              value: hm_local_pw
+            - name: CONNECT_CONFIG_PROVIDERS
+              value: dir
+            - name: CONNECT_CONFIG_PROVIDERS_DIR_CLASS
+              value: org.apache.kafka.common.config.provider.DirectoryConfigProvider
+            - name: CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE
+              value: "false"
+            - name: CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE
+              value: "false"
+          ports:
+            - containerPort: 8083
+          readinessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 20
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: debezium-connect
+  namespace: hm-cdc
+spec:
+  type: NodePort
+  selector:
+    app: debezium-connect
+  ports:
+    - port: 8083
+      targetPort: 8083
+      nodePort: 30083

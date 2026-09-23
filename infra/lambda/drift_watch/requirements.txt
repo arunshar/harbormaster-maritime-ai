@@ -1,0 +1,13 @@
+# Vendored by make drift-lambda-package into infra/lambda/drift_watch/build/.
+# boto3 is provided by the Lambda runtime and NOT vendored (mirrors
+# infra/lambda/teardown's convention). pandas/pyarrow ARE vendored: unlike
+# teardown (boto3-only), this handler reads parquet snapshots directly.
+#
+# Lambda needs Linux wheels, not the macOS wheels supplied by a local pip
+# install. `make drift-lambda-package` targets manylinux2014_x86_64, removes
+# dependency tests and caches, then fails above Lambda's 250 MiB uncompressed
+# deployment limit. The ZIP is staged in the existing models bucket because it
+# remains above Lambda's direct-upload limit; layers do not increase that
+# uncompressed limit.
+pandas>=2.0
+pyarrow>=15

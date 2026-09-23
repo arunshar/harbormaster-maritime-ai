@@ -1,0 +1,20 @@
+{
+  "ddl_sha256": "53b964feeec55b148369ef7f743c35ba394867dd4fad6e71e7d04d063add491e",
+  "debezium_envelopes_sha256": "7bae70b08e0af9a2a3fcea7d4971af03023f81bf5978a15f3008d054e270214b",
+  "connector_config_sha256": "273ee8603f0db319486d863e65d729aeac829d22a7a6e0e41b0b2c0665213ece",
+  "envelope_census": {
+    "change_events": 8,
+    "tombstones": 1,
+    "skips": 2
+  },
+  "final_state_sha256": "8fb3256e53bc8d4476df38c4d45eb63f9fb6ad03af2ad45d9d8720003d79db4b",
+  "apply_census": {
+    "events": 8,
+    "applied": 7,
+    "guard_rejected": 1,
+    "tombstones": 1
+  },
+  "smoke_insert_to_online_s_informational": 0.57,
+  "smoke_recorded_at": "2026-07-03",
+  "provenance": "The vessels, MMSIs, watchlist entries, and sanctions entry in debezium_envelopes.jsonl are fictional. Both MMSIs, 200000001 and 200000003, start with the MID 200, which the ITU does not allocate to any country. The sanctions reference SDN-EXAMPLE-0001 is a placeholder and does not come from any real sanctions list. The regime label ofac is kept because the tests use it. The envelopes were recorded from the local stack on 2026-07-03. On 2026-09-22 their MMSIs and sanctions reference were rewritten to these fictional values, and scripts/cdc_record_fixture.py --repin-only re-derived every pin."
+}

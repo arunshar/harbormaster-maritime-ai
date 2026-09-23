@@ -1,0 +1,131 @@
+# Harbormaster pre-commit gates (engineering-standard).
+#
+# Install once:   .venv/bin/pre-commit install
+# Run on demand:  .venv/bin/pre-commit run --all-files
+#
+# ruff-pre-commit is pinned to v0.15.18, byte-for-byte the ruff already in
+# .venv, so a hook run and a bare `ruff` run never disagree. mypy is kept OUT
+# of the blocking hooks (the repo is not yet type-clean); it runs as a separate
+# informational, manual-stage hook below.
+#
+# no em dashes anywhere in this file (repo-wide rule).
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.18
+    hooks:
+      # Lint. --fix so the hook repairs trivially-fixable findings in place.
+      # Scoped to the same source set the CI lint step covers.
+      - id: ruff
+        name: ruff (lint)
+        args: [--fix]
+        files: ^(serving|streaming|cdc|lake|mlops|tests|scripts)/
+      # Format. Scoped by `exclude` to a grandfathered backlog of files that
+      # are not ruff-format-clean today (measured 2026-07-06: 15 files, 249
+      # lines). Three of them are GeoTrace-Agent files (see pyproject
+      # per-file-ignores). validator.py is byte-identical, and the other two
+      # carry small edits. Auto-formatting stays off for all three so the diff
+      # against upstream stays small. The rest are pre-existing format
+      # debt; new and newly-touched files outside this list ARE formatted, so
+      # the gate is a real ratchet, not a no-op. Burn the list down over time.
+      - id: ruff-format
+        name: ruff-format
+        files: ^(serving|streaming|cdc|lake|mlops|tests|scripts)/
+        exclude: |
+          (?x)^(
+            cdc/tests/test_ddl\.py|
+            cdc/tests/test_envelope\.py|
+            cdc/tests/test_sinks\.py|
+            scripts/drill_p1_slot_bloat\.py|
+            serving/app/agents/rendezvous_finder\.py|
+            serving/app/agents/validator\.py|
+            serving/app/components/space_time_prism\.py|
+            serving/app/hitl\.py|
+            serving/tests/test_hitl\.py|
+            serving/tests/test_pidpm_client_score_full\.py|
+            serving/tests/test_registry\.py|
+            streaming/flink/job\.py|
+            streaming/ingestor/ingest\.py|
+            streaming/ingestor/tests/test_ingest\.py|
+            streaming/replay/generate\.py
+          )$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        # k8s manifests bundle several docs separated by `---`, so allow it.
+        args: [--allow-multiple-documents]
+        # Terraform state files are JSON-with-.tfstate, not hand-authored YAML.
+        exclude: ^infra/terraform/.*\.tfstate.*$
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      # Blocks a committed PEM or SSH private key. The detect-secrets hook below
+      # checks every other file against a reviewed baseline. These hooks run
+      # only after `pre-commit install`, so CI runs the secret hooks as well.
+      - id: detect-private-key
+
+  # Secret scanner. .secrets.baseline lists the reviewed hits (local-only
+  # throwaway DSNs, dummy DynamoDB Local keys, placeholders, and fixture
+  # SHA-256 digests), and every one is marked is_secret: false. A new hit that
+  # is not in the baseline fails the hook.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: ^uv\.lock$
+
+  # detect-secrets has no AWS account-ID detector, so this local hook blocks any
+  # 12-digit number that is not one of the AWS documentation placeholders. It
+  # also runs in CI, so a later re-sync cannot bring a real account ID back.
+  - repo: local
+    hooks:
+      - id: no-real-aws-account-id
+        name: block non-placeholder 12-digit AWS account IDs
+        language: pygrep
+        entry: '(?<![0-9A-Za-z.+])(?<![0-9a-fA-F]{4}-)(?!123456789012|111122223333|000000000000)[0-9]{12}(?![0-9A-Za-z])'
+        exclude: ^(uv\.lock|\.secrets\.baseline)$
+      # The synthetic AIS fixtures use the unallocated MID 200. This hook blocks a
+      # 9-digit MMSI with a United States MID (303, 338, or 366 to 369), so a later
+      # doc re-sync cannot bring back a number that a real vessel could hold. The
+      # two seed and versionNonce guards skip Excalidraw's random element fields.
+      - id: no-us-mmsi
+        name: block US-range MMSIs (MID 303, 338, and 366-369)
+        language: pygrep
+        entry: '(?<!"seed": )(?<!"versionNonce": )(?<![0-9A-Za-z.+])(?:303|338|36[6-9])[0-9]{6}(?![0-9A-Za-z])'
+        exclude: ^uv\.lock$
+
+  # Bandit SAST over the source only. A local hook (not PyCQA/bandit) so it runs
+  # the same .venv bandit and the same pyproject `[tool.bandit]` config CI uses;
+  # tests/, build/, and infra/lambda are excluded there. Confirmed-benign
+  # findings carry narrow per-line `# nosec Bxxx  # reason` markers.
+  - repo: local
+    hooks:
+      - id: bandit
+        name: bandit (SAST, source only)
+        entry: .venv/bin/bandit -c pyproject.toml -r serving streaming cdc lake mlops
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  # Terraform fmt. It needs the `terraform` binary on PATH, so it runs only
+  # where terraform is installed. Runs on infra/terraform/**.tf files only.
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.99.0
+    hooks:
+      - id: terraform_fmt
+        files: ^infra/terraform/.*\.tf$
+
+  # mypy: INFORMATIONAL only, not part of the default (blocking) run. The repo
+  # is not yet type-clean, so a blocking mypy would be a red gate. Run it
+  # explicitly with:  .venv/bin/pre-commit run --hook-stage manual mypy
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (informational, manual stage)
+        entry: .venv/bin/mypy serving streaming cdc lake mlops
+        language: system
+        pass_filenames: false
+        stages: [manual]

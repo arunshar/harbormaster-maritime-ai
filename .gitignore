@@ -1,0 +1,95 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- uv and virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---- Environment files and secrets ----
+.env
+.env.*
+!.env.example
+secrets.*
+credentials.*
+*.pem
+*.key
+.envrc
+*.p12
+*.pfx
+*.jks
+id_rsa*
+id_ed25519*
+kubeconfig
+*.kubeconfig
+.aws/
+.netrc
+
+# ---- Terraform ----
+.terraform/
+.terraform.validate/
+**/.build/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# ---- Run artifacts and local warehouses ----
+# These patterns cover root-level run artifacts and Terraform run evidence.
+# serving/app/artifacts/ holds the committed corridor graph, so the pattern is
+# anchored to the repository root.
+/artifacts/
+infra/terraform/envs/**/artifacts/
+.cdc-warehouse/
+.lake-warehouse/
+mlops/preference_data/
+infra/lambda/*/build/
+streaming/flink/target/
+streaming/flink/dependency-reduced-pom.xml
+
+# ---- Coverage ----
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ---- OS and editor ----
+.DS_Store
+._*
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# ---- Local evidence, session notes, and planning material (never publish) ----
+# scripts/plan_artifact.sh and the drill scripts can write run evidence here.
+sessions/
+docs/handoffs/
+docs/evidence/
+docs/product/
+docs/narrative/
+docs/plan-artifacts/
+docs/drills/

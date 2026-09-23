@@ -1,0 +1,8 @@
+# Managed Flink (KDA) feature-job runtime deps. Do not list apache-flink or any
+# other Flink dependency here -- the runtime already bundles PyFlink, and AWS's
+# own examples warn against re-declaring it. boto3 backs the DynamoDB
+# feature-store sink; it is present in the driver's Python environment but not
+# the separate Python UDF worker subprocess, which needs it wired explicitly via
+# set_python_requirements() (a real first-live-run finding, W1 sprint window,
+# 2026-07-04).
+boto3>=1.34

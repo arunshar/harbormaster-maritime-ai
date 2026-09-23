@@ -1,0 +1,123 @@
+# Harbormaster HPC adapter template for a Pi-DPM fixture-only GPU smoke.
+# Values in angle brackets are placeholders. Fill them in for your own cluster.
+# Gate 0 scope only. No run envelope may be issued while FROM_DISCOVERY remains.
+
+project_name: harbormaster-pidpm
+project_owner: "<owner>"
+decision_owner: "<owner>"
+incident_contact: "<name> <email>"
+project_class: single-gpu-smoke
+scientific_or_engineering_goal: "Verify one deterministic synthetic Pi-DPM training and evaluation smoke on one cluster GPU and produce a provenance-bound checkpoint without making a real-AIS or production-model claim."
+
+repository_source: "<training-repository-url>"
+local_repository_root: "/path/to/harbormaster" # Local control-plane adapter.
+remote_repository_root: "/path/to/training-repository"
+expected_branch: main
+expected_commit: "<training-repository-commit>"
+remote_worktree_policy: clean-required
+allowed_source_edits: none
+allowed_commit_behavior: owner-only
+allowed_push_behavior: owner-only
+
+environment_strategy: conda
+environment_lock_file: "hpc/pidpm-smoke-environment.lock.txt"
+python_or_runtime_version: "3.11.15"
+module_requirements: NOT_APPLICABLE # Existing read-only conda prefix supplies the runtime.
+container_strategy: none
+container_image_or_definition: NOT_APPLICABLE # No container is used for the fixture smoke.
+container_digest: NOT_APPLICABLE # No container is used for the fixture smoke.
+cuda_version: "13.0"
+framework_version: "torch==2.12.1+cu130"
+
+entry_point: "python -m app.components.pidpm.train"
+smoke_entry_point: >-
+  cd /path/to/training-repository &&
+  /path/to/conda/envs/<env>/bin/python -m app.components.pidpm.train
+  --epochs 1 --n 256 --batch-size 64 --seq-len 24 --device cuda
+  --out ${RUN_DIRECTORY}/checkpoints/pidpm-smoke.pt
+full_run_entry_point: NOT_APPLICABLE_YET
+evaluation_entry_point: >-
+  cd /path/to/training-repository &&
+  /path/to/conda/envs/<env>/bin/python -m app.components.pidpm.eval
+  --ckpt ${RUN_DIRECTORY}/checkpoints/pidpm-smoke.pt --n 256 --device cuda
+checkpoint_resume_entry_point: NOT_APPLICABLE # This short smoke is intentionally uncheckpointed.
+
+fixture_or_smoke_data: "hpc/pidpm-smoke-data-manifest.json"
+training_data_location: NOT_APPLICABLE # The authorized tier uses deterministic synthetic data only.
+data_owner: "<owner>"
+data_license: synthetic-no-restriction
+data_classification: internal
+data_manifest: "hpc/pidpm-smoke-data-manifest.json"
+data_manifest_checksum: "<sha256>"
+allowed_data_transfer: none
+
+hpc_project: FROM_DISCOVERY
+Slurm_account: FROM_DISCOVERY
+partition: FROM_DISCOVERY
+QOS: FROM_DISCOVERY
+GPU_type: FROM_DISCOVERY
+GPU_count: 1
+CPU_count: 4
+memory: "32G"
+wall_time: "00:30:00"
+maximum_concurrent_jobs: 1
+maximum_total_jobs: 2
+maximum_retry_count: 1
+maximum_storage_written: "5G"
+
+artifact_parent: "/path/to/scratch/harbormaster-pidpm/runs"
+run_directory: "/path/to/scratch/harbormaster-pidpm/runs/${RUN_ID}"
+stdout_path: "${RUN_DIRECTORY}/slurm-%j.out"
+stderr_path: "${RUN_DIRECTORY}/slurm-%j.err"
+result_artifact: "${RUN_DIRECTORY}/result.json"
+checkpoint_path: "${RUN_DIRECTORY}/checkpoints/pidpm-smoke.pt"
+environment_artifact: "${RUN_DIRECTORY}/env_freeze.txt"
+provenance_manifest: "${RUN_DIRECTORY}/provenance.json"
+
+success_criteria:
+  - "The Slurm job exits zero and RESULT_STATUS contains exactly SMOKE_RESULT_VERIFIED."
+  - "The provenance manifest binds the training repository commit and the two local lock-file checksums."
+  - "CUDA is available and the job records exactly one visible GPU and its model name."
+  - "Training emits finite loss values and creates a nonempty checkpoint at checkpoint_path."
+  - "Independent synthetic evaluation completes and result.json contains finite AUROC, average precision, precision, recall, F1, and sample count fields."
+  - "No real AIS data, AWS service, model registry, deployment path, or external publication is touched."
+failure_categories:
+  - LOCAL_PLAN_BLOCKED
+  - REMOTE_PREFLIGHT_BLOCKED
+  - SUBMISSION_FAILED
+  - JOB_FAILED
+  - JOB_TIMED_OUT_AND_CANCELLED
+  - JOB_COMPLETED_RESULT_INVALID
+  - CLEANUP_BLOCKED
+monitoring_interval: 60
+authorization_expiration: "<ISO-8601 expiration>"
+teardown_policy: exact-job-ids-only
+retention_policy: "Keep the complete smoke run on scratch for 14 days or until the cluster scratch lifecycle cleanup. Copy nothing externally in this tier."
+promotion_authority: "<owner>"
+external_actions_explicitly_excluded:
+  - model promotion or deployment
+  - AWS or any external publication
+  - git push
+  - any deletion outside the run directory
+  - any data transfer not named in allowed_data_transfer
+  - real AIS training
+  - full Pi-DPM training
+  - credential movement
+
+control_plane_repository:
+  root: "/path/to/harbormaster"
+  branch: master
+  commit: "<harbormaster-commit>"
+  worktree_policy: "preserve all pre-existing local changes"
+training_source:
+  repository_root_on_cluster: "/path/to/training-repository"
+  branch: main
+  commit: "<training-repository-commit>"
+  pidpm_tree_object: "<git-tree-object>"
+  worktree_policy: clean-required
+environment_evidence:
+  prefix_on_cluster: "/path/to/conda/envs/<env>"
+  environment_lock_checksum: "<sha256>"
+  conda_history_checksum: "<sha256>"
+  distribution_inventory_checksum: "<sha256>"
+  mutation_policy: read-only

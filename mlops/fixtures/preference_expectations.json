@@ -1,0 +1,5 @@
+{
+  "_comment": "gate 4.4 checksum, pinned from a real run of build_from_hitl against preference_hitl_rows.json (2026-07-04, adversarial review pass). 6 rows: 1 correct (no triple), 2 incorrect above threshold (2 triples), 1 ambiguous + 1 unlabeled (excluded), 1 incorrect below hitl_threshold (excluded by the model-implied-verdict-consistency guard in disagreement_rate/build_from_hitl).",
+  "triple_count": 2,
+  "first_triple_json": "{\"chosen\": {\"reward\": {\"data\": 0.0, \"hard\": 0.0, \"pref\": 0.0, \"soft\": 0.0, \"total\": 0.0}, \"source\": \"hitl_operator\", \"verdict_or_trajectory\": \"not_anomalous\"}, \"context\": {}, \"created_at\": \"2026-07-04T00:00:00+00:00\", \"hard_violation_in_either_arm\": false, \"hitl_operator\": \"reviewer_b\", \"mmsi\": 100002, \"preference_source\": \"hitl_verdict\", \"rejected\": {\"reward\": {\"data\": 0.0, \"hard\": 0.0, \"pref\": 0.0, \"soft\": 0.0, \"total\": 0.0}, \"source\": \"hitl_operator\", \"verdict_or_trajectory\": \"anomalous\"}, \"trace_id\": \"fx-t002\"}"
+}

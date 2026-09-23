@@ -1,0 +1,18 @@
+# Phase 5 gate 5.2: overlay adding the Phase 2 Kafka (CDC consumer-group
+# lag) trigger to the serving ScaledObject. Only applied when the Phase 2
+# CDC plane exists (enable_phase2 = true); the base (../) is complete
+# without it, matching enable_phase2's own default-off posture.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+patches:
+  - path: scaledobject-kafka-trigger.yaml
+    target:
+      group: keda.sh
+      version: v1alpha1
+      kind: ScaledObject
+      name: serving-scaler
+      namespace: hm-serving

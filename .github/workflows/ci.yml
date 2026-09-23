@@ -1,0 +1,48 @@
+name: ci
+
+# This workflow runs lint and unit tests on every push and pull request. It
+# needs no AWS credentials and no repository secrets, and it deploys nothing.
+# Tests under tests/e2e are excluded because their live legs need a running stack.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: >-
+          uv sync --frozen
+          --extra dev
+          --extra serving-runtime
+          --extra ingestor
+          --extra lake
+          --extra mlops
+          --extra pidpm-demo
+
+      - name: Lint (ruff check)
+        run: uv run --frozen ruff check serving streaming cdc lake mlops tests scripts infra/lambda
+
+      - name: Secret and identifier scan
+        run: |
+          uvx pre-commit run detect-private-key --all-files
+          uvx pre-commit run detect-secrets --all-files
+          uvx pre-commit run no-real-aws-account-id --all-files
+          uvx pre-commit run no-us-mmsi --all-files
+
+      - name: Unit tests (excluding e2e and cloud tests)
+        run: uv run --frozen pytest -q --ignore-glob='tests/e2e/*'

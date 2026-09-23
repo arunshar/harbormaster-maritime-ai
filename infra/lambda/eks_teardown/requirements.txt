@@ -1,0 +1,13 @@
+# Local testing only.
+#
+# boto3 ships in the AWS Lambda Python runtime, so it is NOT bundled into the
+# deployment package (modules/eks_teardown_guard zips this directory as-is,
+# the same packaging as modules/finops's teardown Lambda). This file exists so
+# you can create a local virtualenv and run handler.py / test_handler.py
+# off-cloud.
+#
+#   python -m venv .venv
+#   . .venv/bin/activate
+#   pip install -r requirements.txt
+#
+boto3>=1.34.0

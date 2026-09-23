@@ -1,0 +1,112 @@
+# envs/base/terraform.tfvars.example
+#
+# Copy this file to terraform.tfvars and fill in your own values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# terraform.tfvars is gitignored (see repo .gitignore). NEVER commit a real
+# account id, email, or role ARN. None of the values below are secrets; they are
+# placeholders that show the expected shape.
+
+# Project name. Leave as-is unless you are renaming the platform.
+project = "harbormaster"
+
+# Environment for this root. The base root is always "base".
+environment = "base"
+
+# Region for all resources. Budgets and Cost Explorer report in us-east-1
+# regardless; keeping everything in us-east-1 is simplest for Phase 0.
+aws_region = "us-east-1"
+
+# Email subscribed to budget and cost-anomaly alerts. AWS emails a one-time
+# confirmation link to this address; click it or you will receive no alerts.
+alert_email = "you@example.com"
+
+# Fixed name (not ARN) of the EXISTING role used for Harbormaster mutations.
+# On a $75 breach the budget action attaches the spend-freeze policy to it.
+# The permissions boundary intentionally grants that action on this role only.
+platform_role_name = "harbormaster-platform"
+
+# Create the single NAT gateway. Default false avoids the hourly NAT charge.
+# Only set true when a private-subnet workload needs general internet egress.
+enable_nat = false
+
+# Create the EventBridge schedule that runs the teardown Lambda nightly.
+enable_nightly_teardown = true
+
+# Keep the teardown Lambda in dry-run (logs only, no destructive action) until
+# you have read its logs and trust what it would stop/terminate. Set false to
+# let it actually stop streaming/EMR/MSK workloads overnight.
+teardown_dry_run = true
+
+# Phase 1 streaming + serving pipeline. Keep false so a base apply stays
+# Phase-0-only and cheap; flip true for a demo apply, then back to false.
+enable_phase1 = false
+
+# Phase 2 CDC foundation (MSK Serverless, Redis on Fargate, CDC ECR repos, and
+# slot-lag monitoring). Demo windows only; also requires enable_phase1 = true.
+# MSK Serverless left running is ~$18/day: always flip back to false after a
+# demo. The local kind/Strimzi CDC plane needs neither.
+enable_phase2 = false
+
+# Keep the image-dependent CDC services and serving's online-store wiring off
+# during a foundation-only apply. Set true only after both immutable image
+# digests have been pushed to the new ECR repositories and their scans and a
+# separate service-activation plan have been reviewed.
+enable_cdc_services = false
+
+# Keep RDS logical decoding independent from the Phase 2 service switch. Set
+# true only after slot inventory and a separately reviewed parameter-group and
+# reboot plan. This alone creates no CDC services.
+rds_logical_replication_enabled = false
+
+# Phase 3 lake + promotion plane (transient EMR backfill, Feast offline export,
+# HPC->S3 checkpoint manifest, SageMaker async Pi-DPM endpoint + promotion
+# pipeline). Demo windows only; also requires enable_phase1 = true. Does NOT
+# require enable_phase2. Watch the EMR auto-terminate and the SageMaker
+# endpoint's zero-minimum scaling; flip back to false after a demo.
+enable_phase3 = false
+
+# Phase 4 drift-watch plane (EventBridge -> Lambda -> the existing Phase 0 SNS
+# topic). Depends only on Phase 0 (lake bucket + SNS topic). The only module
+# behind this toggle is modules/drift_watch, which is authored and
+# plan-verified only. It has never been applied.
+enable_phase4 = false
+
+# Phase 5 EKS front door. Every value below is the safe resting posture. The
+# W4 runbook changes these in reviewed stages: Phase 5 on with one worker and
+# one operator IPv4 /32, then Kubernetes access and KEDA on, then the route
+# moves from ECS to EKS only after the workload is healthy.
+enable_phase5                   = false
+enable_phase5_kubernetes_access = false
+enable_phase5_keda              = false
+phase5_endpoint_public_access   = false
+phase5_public_access_cidrs      = []
+phase5_node_desired_size        = 0
+phase5_guard_dry_run            = false
+phase5_teardown_max_age_hours   = 4
+phase5_teardown_schedule_expression = "rate(30 minutes)"
+phase5_keep_alive_until         = ""
+
+# API Gateway stays on the existing ECS service until the reviewed W4
+# retarget. The EKS listener ARN is Terraform-wired, never pasted into tfvars.
+serving_target = "ecs"
+
+# Customer-managed KMS key (modules/kms) for S3, RDS, DynamoDB, and CloudWatch
+# log groups. Keep false for the original encryption and a zero-diff plan;
+# roughly $1 per key per month plus usage when true. Flipping to true with an
+# existing RDS instance forces its replacement, so only enable on a fresh
+# Phase 1 window. Authored, never applied.
+enable_cmk = false
+
+# Reserved compatibility input. This SageMaker Async Inference endpoint
+# supports one production variant, so a non-empty URI fails during plan. Use
+# a separately reviewed endpoint design for a candidate comparison.
+pidpm_candidate_model_data_url = ""
+
+# Optional Pi-DPM failure alerts. When true with a configured Phase 3 endpoint,
+# Terraform enables model-bucket EventBridge events, a dedicated SNS email
+# topic using alert_email, and the scoped InvocationFailures alarm. Review the
+# exact plan, confirm the email subscription, and run the bounded
+# malformed-payload and invocation-failure alarm drill before treating the
+# route as operational.
+enable_pidpm_failure_alerts = false

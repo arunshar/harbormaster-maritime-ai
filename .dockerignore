@@ -1,0 +1,21 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+infra
+deploy
+docs
+# NOT cdc: cdc/consumer/Dockerfile COPYs it (COPY cdc ./cdc). Excluding it
+# broke the first consumer image build in a demonstration window.
+# cdc/connect/Dockerfile copies no local source (it only adds a jar into the
+# debezium base image via curl), so it never surfaced this.
+# NOT streaming/replay: streaming/ingestor/Dockerfile COPYs it (the ingestor
+# imports replay.loader). Excluding it broke the first ingestor image build.
+# streaming/flink and streaming/fixtures stay ignored, because neither image
+# needs them.
+streaming/flink
+streaming/fixtures
+*.md
+!README.md

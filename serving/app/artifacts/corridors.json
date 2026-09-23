@@ -1,0 +1,22 @@
+{
+  "name": "harbormaster-demo-corridors",
+  "crs": "EPSG:4326",
+  "coord_order": "lon,lat",
+  "description": "Synthetic demo lane graph for the New York and New Jersey approaches. The three nodes are hand-placed coordinates and do not come from NOAA ENC charts or MarineCadastre data. Serving loads this file read-only at startup, and the lane nodes double as the expected course-change waypoints.",
+  "lanes": [
+    {
+      "id": "lane-ny-approach-ne",
+      "name": "NY Approach NE",
+      "nodes": [
+        [-74.10, 40.40],
+        [-73.40, 40.85],
+        [-72.70, 41.25]
+      ]
+    }
+  ],
+  "waypoints": [
+    {"id": "wp-0", "lonlat": [-74.10, 40.40]},
+    {"id": "wp-1", "lonlat": [-73.40, 40.85]},
+    {"id": "wp-2", "lonlat": [-72.70, 41.25]}
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "marinecadastre_suite": {
+    "expectation_config_sha256_min_rows_1": "f927d4f7ffa491cbe4c0c1daf29508e5f20dfebc684865af26ca093cc0cb7b4b",
+    "expectation_count": 12,
+    "required_columns": ["mmsi", "t", "lat", "lon", "sog", "cog"],
+    "mmsi_range": [100000000, 999999999]
+  },
+  "smoke_fixture": {
+    "path": "lake/fixtures/marinecadastre_sample.jsonl",
+    "row_count": 10,
+    "expected_result": "pass",
+    "provenance": "The rows are fictional. They are the first 10 rows of streaming/fixtures/ais_recorded.jsonl from replay.generate with seed 7. The vessel MMSI starts with the MID 200, which the ITU does not allocate to any country. The file follows the MarineCadastre column schema and contains no MarineCadastre data."
+  },
+  "backfill_smoke": {
+    "ais_history_rows": 10,
+    "corridor_graph_nodes": 0,
+    "corridor_graph_edges": 0,
+    "note": "single-vessel fixture: 0/0 is the correct result (HDBSCAN needs multiple vessels sharing a waypoint), not a failure"
+  },
+  "corridor_graph_synthetic_fixture": {
+    "note": "lake/tests/test_backfill_transforms.py's synthetic multi-vessel zigzag, epsilon_m=200.0, min_cluster_size=3",
+    "n_vessels_3": {"nodes": 2, "edges": 1, "edge_frequency": 3},
+    "n_vessels_4": {"nodes": 2, "edges": 1, "edge_frequency": 4}
+  },
+  "training_export_smoke": {
+    "row_count": 3,
+    "data_fingerprint_sha256": "99cb8777d03bab497885d7933ac23251ed770d6a0cc52e562ecafe28bbb11528"
+  }
+}

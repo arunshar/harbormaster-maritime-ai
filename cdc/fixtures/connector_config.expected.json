@@ -1,0 +1,28 @@
+{
+  "name": "harbormaster-postgres",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "postgres.local",
+    "database.port": "5432",
+    "database.dbname": "harbormaster",
+    "database.user": "hm_admin",
+    "database.password": "${dir:/dev/shm/secrets:password}",
+    "plugin.name": "pgoutput",
+    "publication.name": "harbormaster_cdc",
+    "publication.autocreate.mode": "disabled",
+    "slot.name": "harbormaster_cdc",
+    "table.include.list": "public.vessels,public.watchlist,public.sanctions_flags",
+    "topic.prefix": "hm",
+    "snapshot.mode": "initial",
+    "tombstones.on.delete": "true",
+    "heartbeat.interval.ms": "10000",
+    "heartbeat.action.query": "INSERT INTO public.debezium_heartbeat (id, updated_at) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET updated_at = EXCLUDED.updated_at",
+    "decimal.handling.mode": "string",
+    "time.precision.mode": "adaptive_time_microseconds",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false"
+  }
+}

@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/part-of: harbormaster
+  name: hm-serving
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: serving
+    app.kubernetes.io/part-of: harbormaster
+  name: serving
+  namespace: hm-serving
+spec:
+  ports:
+  - name: http
+    nodePort: 30080
+    port: 80
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: serving
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: serving
+    app.kubernetes.io/part-of: harbormaster
+  name: serving
+  namespace: hm-serving
+spec:
+  selector:
+    matchLabels:
+      app: serving
+  template:
+    metadata:
+      labels:
+        app: serving
+    spec:
+      containers:
+      - env:
+        - name: AWS_REGION
+          value: us-east-1
+        envFrom:
+        - secretRef:
+            name: serving-env
+            optional: true
+        image: harbormaster.invalid/serving@sha256:0000000000000000000000000000000000000000000000000000000000000000
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: serving
+        ports:
+        - containerPort: 8000
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  labels:
+    app: serving
+    app.kubernetes.io/part-of: harbormaster
+  name: serving-scaler
+  namespace: hm-serving
+spec:
+  cooldownPeriod: 300
+  maxReplicaCount: 3
+  minReplicaCount: 0
+  pollingInterval: 30
+  scaleTargetRef:
+    name: serving
+  triggers:
+  - metadata:
+      activationTargetMetricValue: "5000"
+      awsRegion: us-east-1
+      dimensionName: StreamName
+      dimensionValue: harbormaster-base-ais-raw
+      identityOwner: operator
+      metricCollectionTime: "300"
+      metricName: GetRecords.IteratorAgeMilliseconds
+      metricStat: Maximum
+      metricStatPeriod: "60"
+      minMetricValue: "0"
+      namespace: AWS/Kinesis
+      targetMetricValue: "30000"
+    type: aws-cloudwatch

@@ -1,0 +1,56 @@
+{
+  "fixture": "ais_recorded.jsonl",
+  "sha256": "c9035cdf581b54ad5ab78a4926a455d5161a50bed55f26b3dbb2364c2ea1f701",
+  "n_records": 2709,
+  "window_hours": 6.0,
+  "generated_from": "replay.generate (seed=7, start=2024-06-01T00:00:00Z)",
+  "provenance": "The vessels, MMSIs, positions, and anomalies are fictional and were generated for testing. Every MMSI starts with the MID 200. The ITU Table of Maritime Identification Digits does not allocate MID 200 to any country, so no administration can assign these numbers to a real ship.",
+  "anomalies": [
+    {
+      "mmsi": 200000001,
+      "kind": "abnormal_gap",
+      "t": "2024-06-01T05:00:00Z",
+      "expect_reason": "abnormal_gap",
+      "expect_hitl": true,
+      "note": "180-minute coverage gap; vessel reappears at a kinematically reachable point."
+    },
+    {
+      "mmsi": 200000002,
+      "kind": "implausible_jump",
+      "t": "2024-06-01T03:20:00Z",
+      "expect_reason": "implausible_speed",
+      "expect_hitl": true,
+      "note": "One fix jumps ~5 km along the lane in 60 s (~6.9x the vessel speed cap); on-corridor and below the corrupt-data reject bound, so scored not rejected."
+    },
+    {
+      "mmsi": 200000003,
+      "kind": "off_corridor",
+      "t": "2024-06-01T03:20:00Z",
+      "expect_reason": "off_corridor",
+      "expect_hitl": true,
+      "note": "Vessel operates ~10 km off the nearest sea-lane at a plausible speed."
+    }
+  ],
+  "normal_samples": [
+    {
+      "mmsi": 200000010,
+      "t": "2024-06-01T03:00:00Z"
+    },
+    {
+      "mmsi": 200000011,
+      "t": "2024-06-01T03:00:00Z"
+    },
+    {
+      "mmsi": 200000012,
+      "t": "2024-06-01T03:00:00Z"
+    },
+    {
+      "mmsi": 200000013,
+      "t": "2024-06-01T03:00:00Z"
+    },
+    {
+      "mmsi": 200000014,
+      "t": "2024-06-01T03:00:00Z"
+    }
+  ]
+}

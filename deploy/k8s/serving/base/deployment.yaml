@@ -1,0 +1,68 @@
+# Phase 5 gate 5.2: the deterministic AIS scorer on EKS. SAME container image
+# as the ECS Fargate service (serving/Dockerfile, unmodified, per the locked
+# decision in docs/phases/PHASE_5.md: only the orchestration substrate
+# changes); env mirrors modules/ecs_serving's task definition. The image name
+# below is a reserved-domain, zero-digest sentinel. The W4 renderer requires
+# an immutable ECR repository@sha256 reference and replaces this sentinel in
+# the complete Kustomize output. Applying the base directly cannot pull a real
+# image.
+#
+# No `replicas:` field on purpose: the KEDA ScaledObject
+# (scaledobject-kinesis.yaml) owns replica count, including the
+# minReplicaCount: 0 scale-to-zero floor a bare HPA cannot express.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: serving
+  namespace: hm-serving
+  labels:
+    app: serving
+    app.kubernetes.io/part-of: harbormaster
+spec:
+  selector:
+    matchLabels:
+      app: serving
+  template:
+    metadata:
+      labels:
+        app: serving
+    spec:
+      containers:
+        - name: serving
+          image: harbormaster.invalid/serving@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            # Mirrors modules/ecs_serving's task-definition environment. The
+            # HM_PG_* secret parts arrive via the optional Secret below at
+            # demo time (the EKS analogue of the ECS Secrets Manager
+            # injection); absent, the app runs in its no-DB degraded mode,
+            # which is all a dry-run needs.
+            - name: AWS_REGION
+              value: us-east-1
+          envFrom:
+            - secretRef:
+                name: serving-env
+                optional: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false

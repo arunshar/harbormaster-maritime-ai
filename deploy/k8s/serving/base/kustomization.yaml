@@ -1,0 +1,17 @@
+# Phase 5 gate 5.2: base kustomization for the EKS serving front door.
+# Build with `kubectl kustomize deploy/k8s/serving/base` (or kustomize
+# v5); the committed golden output lives in ../golden/base.yaml and is
+# checksummed by tests/e2e/test_phase5_k8s_manifests.py.
+#
+# scripts/render_phase5_serving.py builds this base and replaces the one
+# reserved-domain zero-digest sentinel with a validated immutable ECR digest.
+# The tracked base therefore never contains an account id, mutable tag, or
+# runnable image.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - scaledobject-kinesis.yaml

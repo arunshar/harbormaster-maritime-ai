@@ -1,0 +1,11 @@
+{
+  "hitl_threshold": 0.6,
+  "rows": [
+    {"trace_id": "fx-t001", "mmsi": 100001, "score": 0.92, "label": "correct", "reviewer": "reviewer_a"},
+    {"trace_id": "fx-t002", "mmsi": 100002, "score": 0.88, "label": "incorrect", "reviewer": "reviewer_b"},
+    {"trace_id": "fx-t003", "mmsi": 100003, "score": 0.75, "label": "incorrect", "reviewer": "reviewer_a"},
+    {"trace_id": "fx-t004", "mmsi": 100004, "score": 0.91, "label": "ambiguous", "reviewer": "reviewer_b"},
+    {"trace_id": "fx-t005", "mmsi": 100005, "score": 0.83, "label": null, "reviewer": "reviewer_a"},
+    {"trace_id": "fx-t006", "mmsi": 100006, "score": 0.45, "label": "incorrect", "reviewer": "reviewer_b"}
+  ]
+}

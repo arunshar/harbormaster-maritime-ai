@@ -1,0 +1,20 @@
+Harbormaster
+Copyright (c) 2026 Arun Sharma
+
+This project is released under the MIT License (see LICENSE).
+
+assets/diagrams/overview.svg is an Excalidraw export, and it embeds subsets of
+three fonts. Each font keeps its own license, and this project's MIT License
+does not cover them.
+
+The embedded Excalifont subset reads "Copyright (c) 2024 by Excalidraw. All
+rights reserved." It does not state its license terms.
+
+Lilita One is Copyright (c) 2011 Juan Montoreano, with the Reserved Font Name
+"Lilita One". It is distributed under the SIL Open Font License 1.1.
+
+Comic Shanns is Copyright (c) 2018 Shannon Miwa and later contributors. It is
+distributed under the MIT License, and the embedded subset carries the full
+license text.
+
+The PNG diagrams contain rendered text and embed no font files.

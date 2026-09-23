@@ -1,0 +1,88 @@
+{
+  "manifest_schema": {
+    "required_meta_fields": [
+      "git_sha",
+      "config_hash",
+      "data_fingerprint",
+      "mirror_synthetic_anomaly_version",
+      "wandb_run_id"
+    ],
+    "entry_fields": ["step", "sha", "path", "meta", "ts"],
+    "path_layout": "step_<n:07d>/<sha256[:16]>.bin"
+  },
+  "golden_manifest_entry": {
+    "note": "save(Path(d), 0, b'golden-example-checkpoint-bytes', meta=..., now=lambda: 1719878400.0)",
+    "line": "{\"meta\": {\"config_hash\": \"cfg0001\", \"data_fingerprint\": \"fp0001\", \"git_sha\": \"deadbeef\", \"mirror_synthetic_anomaly_version\": \"v1\", \"wandb_run_id\": \"wandb-golden-0001\"}, \"path\": \"step_0000000/188d0609060a35e1.bin\", \"sha\": \"188d0609060a35e1\", \"step\": 0, \"ts\": 1719878400.0}"
+  },
+  "promotion_state_machine": {
+    "note": "run_promotion with PASSING_GATE + CLEAN_SHADOW; clean_run never burns; rollback_run_burns_at_25 burns exactly at canary weight 25",
+    "clean_run": [
+      {"stage": "gate", "action": "pass"},
+      {"stage": "shadow", "action": "pass"},
+      {"stage": "canary_5", "action": "advance"},
+      {"stage": "canary_25", "action": "advance"},
+      {"stage": "canary_50", "action": "advance"},
+      {"stage": "canary_100", "action": "advance"}
+    ],
+    "rollback_run_burns_at_25": [
+      {"stage": "gate", "action": "pass"},
+      {"stage": "shadow", "action": "pass"},
+      {"stage": "canary_5", "action": "advance"},
+      {"stage": "canary_25", "action": "revert"}
+    ]
+  },
+  "drift_check": {
+    "note": "psi/ks/pvalue pinned against MIRROR's own serving/monitoring/drift.py, not this port; see mlops/tests/test_drift.py's module docstring for the exact independent-verification call",
+    "fixture": "np.linspace(0, 10, 50) reference vs np.linspace(0, 10, 50) [feature_a, unchanged] / np.linspace(5, 15, 50) [feature_b, +5 shift] current",
+    "feature_a_drifted": false,
+    "feature_b_drifted": true,
+    "feature_b_psi": 6.652284902471817,
+    "feature_b_ks": 0.5,
+    "feature_b_ks_pvalue": 3.6276162006545173e-06
+  },
+  "tenant_rls": {
+    "note": "gate 5.4: sha256 of cdc/schema/tenancy.py's canonical_ddl() plus the one policy predicate every table uses; if either changes intentionally, update this AND docs/phases/PHASE_5.md in the same commit",
+    "tables": ["hitl_queue", "vessels", "watchlist", "sanctions_flags"],
+    "policy_predicate": "tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid",
+    "ddl_sha256": "3f25769bbf4cb7d105ecc9f9330763d275dba56db38ba6e0afb20289bcaa7460"
+  },
+  "tenant_slo_tiers": {
+    "note": "gate 5.4 golden cases: tier targets (real_time IS the Phase 1 table verbatim; near_real_time/batch are DESIGN targets, live measurement deferred to the W4 demo window) and the one-series-three-verdicts boundary case, verified against the real calculator",
+    "targets": {
+      "real_time": {"score_success_ratio": 0.999, "score_kernel_p95_ms": 300.0, "replay_to_hitl_p95_s": 10.0},
+      "near_real_time": {"score_success_ratio": 0.995, "score_kernel_p95_ms": 1000.0, "replay_to_hitl_p95_s": 60.0},
+      "batch": {"score_success_ratio": 0.99, "score_kernel_p95_ms": 5000.0, "replay_to_hitl_p95_s": 900.0}
+    },
+    "boundary_case": {
+      "series": "1440 buckets at 60s, each total=1000 bad=30 (3% bad ratio, sustained)",
+      "real_time_status": "page",
+      "near_real_time_status": "warning",
+      "batch_status": "ok",
+      "real_time_should_rollback": true,
+      "near_real_time_should_rollback": false,
+      "batch_should_rollback": false
+    }
+  },
+  "ppo_stretch_expectations": {
+    "note": "gate 5.7 (LABELED STRETCH, never in the core pipeline): pins on tiny_synthetic_graph(). Changing the graph or coverage_minus_fuel updates this AND docs/phases/PHASE_5.md in the same commit. Namespaced so it is never confused with a core-pipeline checksum.",
+    "canonical_route": ["n0", "n1", "n3", "n2"],
+    "coverage_weight": 1.0,
+    "fuel_weight": 1.0,
+    "reward": 0.7902652130125524,
+    "reward_repr": "0.7902652130125524",
+    "reward_sha256": "019284961487f0be56cffe4d19bf86d6018a866e448087e68d526531aa5b0915",
+    "partial_routes": {
+      "single_node_n0_coverage_only": 0.4444444444444444,
+      "n0_n1": 0.55551364778883
+    },
+    "kl_crosscheck": {
+      "note": "AdaptiveKLController vendored bit-for-bit from an earlier reinforcement-learning repository of mine; the test re-derives the update by the explicit formula and asserts equality on these inputs (same spirit as Phase 3's sklearn/scipy cross-checks).",
+      "kl_coef_0": 0.2,
+      "target": 6.0,
+      "horizon": 10000,
+      "n_steps": 1,
+      "above_target": {"current_kl": 9.0, "kl_coef_1": 0.200004},
+      "below_target": {"current_kl": 3.0, "kl_coef_1": 0.199996}
+    }
+  }
+}

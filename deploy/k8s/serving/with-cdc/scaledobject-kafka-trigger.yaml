@@ -1,0 +1,31 @@
+# Phase 5 gate 5.2: JSON6902 patch appending the Phase 2 Kafka trigger to
+# the base ScaledObject's triggers list. A PATCH, not a second ScaledObject,
+# because KEDA rejects two ScaledObjects on one scaleTargetRef (recorded
+# deviation from the spec's "two ScaledObject manifests" wording; the two
+# manifests exist, one as base trigger, one as this patch). Apply only when
+# the Phase 2 CDC plane is up (enable_phase2 = true): the consumer group
+# below is the CDC consumer's real group.id (cdc/consumer/service.py:
+# "hm-cdc-consumer").
+#
+# bootstrapServers is a placeholder by necessity: the MSK Serverless
+# bootstrap endpoint only exists while enable_phase2 infrastructure is
+# applied, and it is account-scoped. The demo runbook substitutes the real
+# endpoint from `terraform output` (or the module output) before applying
+# this overlay; committing an account endpoint would be both stale and a
+# doc-drift trap.
+- op: add
+  path: /spec/triggers/-
+  value:
+    type: kafka
+    metadata:
+      bootstrapServers: PLACEHOLDER_MSK_BOOTSTRAP:9098
+      consumerGroup: hm-cdc-consumer
+      topic: ""
+      lagThreshold: "100"
+      activationLagThreshold: "0"
+      offsetResetPolicy: latest
+      # MSK Serverless is IAM-auth only (SASL/AWS_MSK_IAM over TLS), the
+      # same auth the Phase 2 ECS consumer uses.
+      sasl: aws_msk_iam
+      tls: enable
+      awsRegion: us-east-1
