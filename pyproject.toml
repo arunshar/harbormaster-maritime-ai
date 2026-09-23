@@ -13,7 +13,7 @@ authors = [{ name = "Arun Sharma" }]
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.110",
-  "uvicorn[standard]>=0.27",
+  "uvicorn[standard]>=0.53.0",
   "pydantic>=2.6",
   "pydantic-settings>=2.2",
   "prometheus-client>=0.20",
