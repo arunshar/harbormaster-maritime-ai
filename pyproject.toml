@@ -47,9 +47,10 @@ cdc = [
   "pyarrow>=15",
 ]
 # Phase 3 lake + promotion plane (lake/, mlops/). Unit tests need these:
-# great_expectations (a lightweight PandasDataset, no DataContext/Checkpoint
-# project scaffolding), pandas, scikit-learn (HDBSCAN waypoint clustering),
-# pyarrow, and pyiceberg[sql-sqlite]. The Phase 2A idempotency/compaction tests
+# great_expectations (a fresh in-memory ephemeral context per call, no
+# DataContext/Checkpoint project scaffolding, no PandasDataset), pandas,
+# scikit-learn (HDBSCAN waypoint clustering), pyarrow, and
+# pyiceberg[sql-sqlite]. The Phase 2A idempotency/compaction tests
 # (lake/tests/test_iceberg.py) exercise a real local SQLite-catalog + file
 # warehouse through pyiceberg, so it is a unit-test dependency now (previously
 # only pyarrow was needed, when the lake tests were schema-shape only). The
