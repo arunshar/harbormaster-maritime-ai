@@ -9,5 +9,5 @@
 # deployment limit. The ZIP is staged in the existing models bucket because it
 # remains above Lambda's direct-upload limit; layers do not increase that
 # uncompressed limit.
-pandas>=2.0
+pandas>=3.0.6
 pyarrow>=15
