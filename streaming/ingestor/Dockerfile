@@ -1,7 +1,7 @@
 # Harbormaster replay-ingestor image. Build from the REPO ROOT:
 #   docker build -f streaming/ingestor/Dockerfile -t harbormaster-ingestor .
 # The fixture is read from S3 at runtime (FIXTURE_URI), not bundled into the image.
-FROM python:3.12-slim
+FROM python:3.14-slim
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONPATH=/srv/streaming
 WORKDIR /srv
