@@ -14,7 +14,7 @@
 # Dockerfile, matching the "build + push, operator-run" pattern already used for
 # the CDC connect/consumer images.
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 WORKDIR /opt/pidpm
 
