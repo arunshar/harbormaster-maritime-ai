@@ -2,7 +2,7 @@
 #   docker build -f cdc/consumer/Dockerfile -t harbormaster-cdc-consumer .
 # Config is env-driven (HM_KAFKA_BOOTSTRAP, HM_ONLINE_TABLE, ...); see
 # cdc/consumer/service.py ConsumerConfig.
-FROM python:3.12-slim-bookworm AS build
+FROM python:3.14-slim-bookworm AS build
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONPATH=/srv
 WORKDIR /srv
