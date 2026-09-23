@@ -1,12 +1,13 @@
 """MarineCadastre raw-extract data-quality gate (Phase 3, gate 3.1).
 
-Runs as the first Spark step of the EMR backfill (gate 3.2): a failing suite
+Runs as the first Spark step of the EMR backfill (gate 3.2). A failing suite
 halts the job before anything reaches Iceberg, so bad data blocks training
-rather than landing silently. The checks are deliberately pandas-native (a
-real `great_expectations` PandasDataset, no DataContext/Checkpoint project
-scaffolding) so the unit suite needs no Spark and no AWS; the EMR job calls
-the same pure function against a pandas-converted micro-batch or a bounded
-sample of the raw extract.
+instead of landing silently. The checks build a fresh, in-memory
+great_expectations ephemeral context for each call, and they never touch a
+project directory, a Checkpoint, or any file on disk. The unit suite needs no
+Spark and no AWS because of this, and the EMR job calls the same pure
+function against a pandas-converted micro-batch or a bounded sample of the
+raw extract.
 
 Field names match the existing AIS fixture convention (streaming/fixtures/
 ais_recorded.jsonl): mmsi, t, lat, lon, sog, cog.
@@ -119,11 +120,16 @@ def _check_per_mmsi_timestamp_monotonic(
 def validate_marinecadastre_batch(df: pd.DataFrame, *, min_rows: int = 1) -> SuiteResult:
     """Run the full suite against a pandas batch. Pure: no I/O, no network.
 
-    Column-existence failures short-circuit the corresponding value checks
-    (a missing column would otherwise raise a confusing KeyError instead of
-    reporting the real problem: the column is missing).
+    Column-existence failures short-circuit the corresponding value checks.
+    A missing column would otherwise raise a confusing KeyError instead of
+    reporting the real problem, which is that the column is missing.
     """
-    from great_expectations.dataset import PandasDataset
+    import great_expectations as gx
+    from great_expectations.core import ExpectationSuite
+    from great_expectations.expectations import (
+        ExpectColumnValuesToBeBetween,
+        ExpectColumnValuesToNotBeNull,
+    )
 
     failures: list[ExpectationFailure] = []
     row_count = len(df)
@@ -138,45 +144,65 @@ def validate_marinecadastre_batch(df: pd.DataFrame, *, min_rows: int = 1) -> Sui
         )
 
     if row_count > 0 and not missing:
-        ds = PandasDataset(df)
+        # An ephemeral context lives only in memory. It writes no project
+        # directory, no Checkpoint, and no file to disk, and a fresh one for
+        # each call means no state or name ever carries over between calls.
+        ctx = gx.get_context(mode="ephemeral")
+        # great_expectations 1.x resolves the metric graph with a tqdm
+        # progress bar on by default, and it passes disable=False on its own,
+        # so TQDM_DISABLE has no effect. This module runs as the first Spark
+        # step of the EMR backfill on every micro-batch, so an unsuppressed
+        # bar would add real log volume to production CloudWatch output.
+        # Turning it off here keeps stderr silent, verified empirically: a
+        # single-row batch produces 0 bytes of stderr with this line in
+        # place, versus about 3.8 KB without it.
+        ctx.variables.progress_bars = {"globally": False}
+        data_source = ctx.data_sources.add_pandas(name="marinecadastre")
+        asset = data_source.add_dataframe_asset(name="batch")
+        batch_definition = asset.add_batch_definition_whole_dataframe("whole_batch")
+        batch = batch_definition.get_batch(batch_parameters={"dataframe": df})
 
-        r = ds.expect_column_values_to_be_between(
-            "lat", min_value=-90, max_value=90, result_format="SUMMARY"
+        # One suite with all four expectations, validated in a single call.
+        # Each separate batch.validate() call used to make great_expectations
+        # resolve the metric graph from scratch, so four calls meant four
+        # resolutions against the same batch on every micro-batch gate run.
+        # A null value is vacuously true for expect_column_values_to_be_between
+        # in this version of great_expectations, confirmed by running it
+        # directly against a batch with a null mmsi: the between check reports
+        # success and the not-null check catches the null, the same split the
+        # tests require.
+        suite = ExpectationSuite(name="marinecadastre_batch")
+        suite.add_expectation(
+            ExpectColumnValuesToBeBetween(column="lat", min_value=-90, max_value=90)
         )
-        if not r.success:
-            failures.append(
-                ExpectationFailure(
-                    "lat_range", f"{r.result['unexpected_count']} rows outside [-90, 90]"
-                )
-            )
-
-        r = ds.expect_column_values_to_be_between(
-            "lon", min_value=-180, max_value=180, result_format="SUMMARY"
+        suite.add_expectation(
+            ExpectColumnValuesToBeBetween(column="lon", min_value=-180, max_value=180)
         )
-        if not r.success:
-            failures.append(
-                ExpectationFailure(
-                    "lon_range", f"{r.result['unexpected_count']} rows outside [-180, 180]"
-                )
-            )
-
-        r = ds.expect_column_values_to_be_between(
-            "mmsi", min_value=MMSI_MIN, max_value=MMSI_MAX, result_format="SUMMARY"
+        suite.add_expectation(
+            ExpectColumnValuesToBeBetween(column="mmsi", min_value=MMSI_MIN, max_value=MMSI_MAX)
         )
-        if not r.success:
-            failures.append(
-                ExpectationFailure(
-                    "mmsi_range", f"{r.result['unexpected_count']} rows outside the MMSI range"
-                )
-            )
+        suite.add_expectation(ExpectColumnValuesToNotBeNull(column="mmsi"))
 
-        r = ds.expect_column_values_to_not_be_null("mmsi", result_format="SUMMARY")
-        if not r.success:
-            failures.append(
-                ExpectationFailure(
-                    "mmsi_not_null", f"{r.result['unexpected_count']} null mmsi values"
+        suite_result = batch.validate(suite, result_format="SUMMARY")
+
+        range_checks = {
+            "lat": ("lat_range", "[-90, 90]"),
+            "lon": ("lon_range", "[-180, 180]"),
+            "mmsi": ("mmsi_range", "the MMSI range"),
+        }
+        for expectation_result in suite_result.results:
+            if expectation_result.success:
+                continue
+            exp_type = expectation_result.expectation_config.type
+            column = expectation_result.expectation_config.kwargs.get("column")
+            unexpected = expectation_result.result["unexpected_count"]
+            if exp_type == "expect_column_values_to_not_be_null":
+                failures.append(
+                    ExpectationFailure("mmsi_not_null", f"{unexpected} null mmsi values")
                 )
-            )
+            else:
+                name, range_desc = range_checks[column]
+                failures.append(ExpectationFailure(name, f"{unexpected} rows outside {range_desc}"))
 
         mono_failure = _check_per_mmsi_timestamp_monotonic(df)
         if mono_failure:
