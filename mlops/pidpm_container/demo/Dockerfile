@@ -5,7 +5,7 @@
 # actually deploys to demonstrate the real SageMaker async endpoint
 # infrastructure, scale-to-zero, and the promotion pipeline.
 
-FROM python:3.11-slim-bookworm AS build
+FROM python:3.14-slim-bookworm AS build
 
 WORKDIR /opt/pidpm-demo
 
