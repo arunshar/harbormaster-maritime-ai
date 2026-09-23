@@ -5,4 +5,4 @@
 # the separate Python UDF worker subprocess, which needs it wired explicitly via
 # set_python_requirements() (a real first-live-run finding, W1 sprint window,
 # 2026-07-04).
-boto3>=1.34
+boto3>=1.43.98
