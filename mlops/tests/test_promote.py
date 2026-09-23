@@ -156,16 +156,16 @@ def test_promotion_result_defaults_are_sane():
 PASSING_PROBE = RewardHackingProbeResult(
     baseline_mean_reward=5.0,
     candidate_mean_reward=8.0,
-    baseline_hard_violation_rate=0.1,
-    candidate_hard_violation_rate=0.1,
+    baseline_structural_violation_rate=0.1,
+    candidate_structural_violation_rate=0.1,
     blocked=False,
     reason=None,
 )
 BLOCKED_PROBE = RewardHackingProbeResult(
     baseline_mean_reward=5.0,
     candidate_mean_reward=8.0,
-    baseline_hard_violation_rate=0.1,
-    candidate_hard_violation_rate=0.3,
+    baseline_structural_violation_rate=0.1,
+    candidate_structural_violation_rate=0.3,
     blocked=True,
     reason="gamed",
 )

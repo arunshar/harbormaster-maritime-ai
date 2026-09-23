@@ -1,40 +1,38 @@
-"""The PPO trainer SHAPE from an earlier reinforcement-learning repository of
-mine, retargeted to a tabular numpy policy over the corridor graph (gate 5.7).
-Zero torch, zero GPU, zero AWS.
+"""The PPO trainer, adapted from an earlier reinforcement-learning repository
+of mine, retargeted to a tabular numpy policy over the corridor graph (gate
+5.7). Zero torch, zero GPU, zero AWS.
 
 PPO is the clipped-surrogate policy-gradient method of Schulman et al. (2017),
 arXiv:1707.06347.
 
-Provenance: the ``PpoConfig`` FIELD SET and the ``PpoTrainer.step_update`` loss
-structure are ported from the earlier RL repository's
-``app/trainers/ppo_trainer.py``: the clipped surrogate
-``-min(ratio*A, clip(ratio)*A)``, the value MSE scaled by
-``vf_coef``, the entropy bonus scaled by ``ent_coef``, the adaptive-KL penalty,
-global-norm gradient clipping, and a cosine LR schedule, in that exact
-composition. What is retargeted, not copied: the policy is a
-masked-softmax LOOKUP TABLE over corridor edges (not an LM), the value function
-is a per-node table (not a torch head), and the gradients are the closed-form
-softmax/PPO gradients computed in numpy (the earlier RL repository backprops
-through torch).
-``AdaptiveKLController`` and ``cosine_lr`` come from the byte-for-byte
-``vendored_kl`` module; only the torch-bound ``clip_grad_norm`` is reimplemented
-here, in numpy, as the source file's header states.
+Provenance: the ``PpoConfig`` field set and the ``PpoTrainer.step_update`` loss
+structure are adapted from an earlier reinforcement-learning project of mine:
+the clipped surrogate ``-min(ratio*A, clip(ratio)*A)``, the value MSE scaled by
+``vf_coef``, the entropy bonus scaled by ``ent_coef``, the adaptive-KL
+penalty, global-norm gradient clipping, and a cosine LR schedule. What is
+retargeted, not copied: the policy is a masked-softmax lookup table over
+corridor edges (not a language model), the value function is a per-node table
+(not a torch head), and the gradients are the closed-form softmax/PPO
+gradients computed in numpy (the source project backpropagates through
+torch). ``AdaptiveKLController`` and ``cosine_lr`` come from the
+``kl_schedule`` module, itself pinned by its own regression test; only the
+torch-bound ``clip_grad_norm`` is reimplemented here, in numpy, as that
+module's header states.
 
 Deliberate departures from the source, all because the target is a tiny tabular
-MDP rather than LM fine-tuning:
-- The optimizer is a minimal in-file Adam with weight decay OFF (torch's
-  ``AdamW`` defaults to ``1e-2``; decaying a corridor lookup table toward zero
-  has no meaning here), and advantages are Monte-Carlo returns minus the value
-  baseline (not GAE-lambda).
-- The DEFAULT VALUES of the learning-rate and schedule fields are RETUNED for
-  the tiny MDP, not carried over from the source: ``lr`` 1e-2 (source 1e-6),
-  ``lr_min`` 1e-4 (source 1e-7), ``warmup_steps`` 5 (source 100),
-  ``total_steps`` 200 (source 5000). The source's 1e-6 LM-fine-tuning rate would
-  barely move a lookup table over a 200-step smoke; only the field set and the
-  clip/vf/ent/target-KL coefficients are the source's.
+MDP rather than language-model fine-tuning:
+- The optimizer is a minimal in-file Adam with weight decay off (a lookup
+  table has no reason to decay toward zero), and advantages are Monte-Carlo
+  returns minus the value baseline (not GAE-lambda).
+- The default learning-rate and schedule values are retuned for this tiny
+  MDP rather than carried over from the source, because the source's
+  fine-tuning rate would barely move a lookup table over a short smoke run.
+  Only the field set and the clip/vf/ent/target-KL coefficients are the
+  source's.
 None of this changes the update math this gate is checked on. Hand-computed
-clipped-surrogate cases and trainer behavior tests pin the ported composition;
-all departures are disclosed so the "ported shape" claim stays honest.
+clipped-surrogate cases and trainer behavior tests pin the adapted
+composition, and all departures are disclosed so the "adapted shape" claim
+stays honest.
 """
 
 from __future__ import annotations
@@ -43,7 +41,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from mlops.route_optimizer.vendored_kl import AdaptiveKLController, cosine_lr
+from mlops.route_optimizer.kl_schedule import AdaptiveKLController, cosine_lr
 
 __all__ = [
     "PpoConfig",
@@ -57,14 +55,14 @@ __all__ = [
 
 @dataclass
 class PpoConfig:
-    """Ported field-for-field from the source ``PpoConfig`` so the shared shape is
-    obvious. The clip/vf/ent/target-KL/minibatch/rollout coefficients keep the
-    source's values; the learning-rate and schedule defaults (``lr``,
-    ``lr_min``, ``warmup_steps``, ``total_steps``) are RETUNED for this tiny
-    tabular MDP (see the module docstring's departures list). Plus two fields
-    the corridor MDP needs that an LM run does not: ``gamma`` (return discount)
-    and ``hop_seconds`` (the per-hop time budget the S-KBM feasibility gate
-    measures against)."""
+    """Adapted from the source ``PpoConfig`` so the shared shape is obvious.
+    The clip/vf/ent/target-KL/minibatch/rollout coefficients keep the
+    source's values, and the learning-rate and schedule defaults (``lr``,
+    ``lr_min``, ``warmup_steps``, ``total_steps``) are retuned for this tiny
+    tabular MDP (see the module docstring's departures list). Two fields are
+    new because the corridor MDP needs them and a language-model run does
+    not: ``gamma`` (return discount) and ``hop_seconds`` (the per-hop time
+    budget the S-KBM feasibility gate measures against)."""
 
     lr: float = 1e-2
     lr_min: float = 1e-4
@@ -149,8 +147,8 @@ class ValueTable:
 
 @dataclass
 class RouteBatch:
-    """The ported ``_PpoBatch`` retargeted to corridor decisions: one row per
-    (state, action) decision across the rollout batch."""
+    """The source trainer's batch structure, retargeted to corridor decisions:
+    one row per (state, action) decision across the rollout batch."""
 
     states: np.ndarray  # (n,) node indices
     actions: np.ndarray  # (n,) action-slot indices
@@ -163,7 +161,7 @@ class RouteBatch:
 
 def global_grad_norm(*grads: np.ndarray) -> float:
     """L2 norm of all gradients concatenated: the numpy stand-in for the
-    torch ``clip_grad_norm_`` the vendored header deliberately did not port."""
+    torch ``clip_grad_norm_`` this module deliberately does not carry over."""
     total = 0.0
     for g in grads:
         total += float(np.sum(g * g))
@@ -192,7 +190,7 @@ class _Adam:
 
 
 class PpoTrainer:
-    """Ported ``PpoTrainer`` shape: same constructor seams (a policy, a frozen
+    """Adapted trainer shape: same constructor seams (a policy, a frozen
     reference policy, a value head, a ``PpoConfig``) and the same
     ``step_update`` loss composition, over the tabular corridor policy.
     """
@@ -236,7 +234,7 @@ class PpoTrainer:
             }
         new_logp, ent, probs = self.policy.forward(batch.states, batch.actions, batch.masks)
 
-        # --- ported loss composition (the source's ppo_trainer.step_update) ---
+        # --- adapted loss composition (the source trainer's step update) ---
         ratio = np.exp(new_logp - batch.action_logp)
         adv = batch.advantages
         unclipped = ratio * adv

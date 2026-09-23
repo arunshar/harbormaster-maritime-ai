@@ -7,9 +7,10 @@ mlops.promote.run_promotion (not reimplementations), mirroring drill L2's
 "exercise the real state machine" pattern:
 
   - Gamed: higher mean total reward than baseline, but also a higher
-    hard-violation rate (exploiting the soft/data/pref terms at the hard
-    term's expense). The probe blocks it; run_promotion halts at the new
-    "reward_probe" step, never touching shadow or canary.
+    structural-violation rate (the candidate wins on the shaping/data/pref
+    terms at the structural term's expense). The probe blocks it;
+    run_promotion halts at the new "reward_probe" step, never touching
+    shadow or canary.
   - Honest: higher mean total reward, violation rate flat. The probe
     passes it; run_promotion proceeds through a clean holdout gate and
     shadow to a full promotion.
@@ -43,17 +44,17 @@ PASSING_GATE = HoldoutGateResult(
 CLEAN_SHADOW = ShadowDiffResult(mean_abs_diff=0.01, max_abs_diff=0.02, n_samples=100, passed=True)
 
 BASELINE_REWARDS = [
-    RewardBreakdown(total=5.0, hard=0.5, soft=1.0, data=1.0, pref=1.0) for _ in range(20)
+    RewardBreakdown(total=5.0, structural=0.5, shaping=1.0, data=1.0, pref=1.0) for _ in range(20)
 ]
-# gamed: total reward wins by inflating soft/data/pref while the hard term
-# goes negative (a real violation) on most of the batch
+# gamed: total reward wins by inflating shaping/data/pref while the
+# structural term goes negative (a real violation) on most of the batch
 GAMED_CANDIDATE_REWARDS = [
-    RewardBreakdown(total=8.0, hard=-1.0 if i < 14 else 0.5, soft=3.0, data=3.0, pref=3.0)
+    RewardBreakdown(total=8.0, structural=-1.0 if i < 14 else 0.5, shaping=3.0, data=3.0, pref=3.0)
     for i in range(20)
 ]
-# honest: total reward wins with hard-violation rate flat or better
+# honest: total reward wins with structural-violation rate flat or better
 HONEST_CANDIDATE_REWARDS = [
-    RewardBreakdown(total=8.0, hard=0.5, soft=1.5, data=1.5, pref=1.5) for _ in range(20)
+    RewardBreakdown(total=8.0, structural=0.5, shaping=1.5, data=1.5, pref=1.5) for _ in range(20)
 ]
 
 
@@ -103,11 +104,13 @@ def main() -> int:
     lines = [
         f"# Drill L4 transcript: reward-hacking probe ({datetime.now(UTC).isoformat()})",
         "",
-        "## Gamed candidate (higher total reward, higher hard-violation rate)",
+        "## Gamed candidate (higher total reward, higher structural-violation rate)",
         f"baseline_mean_reward={gamed['probe'].baseline_mean_reward:.4f} "
         f"candidate_mean_reward={gamed['probe'].candidate_mean_reward:.4f}",
-        f"baseline_hard_violation_rate={gamed['probe'].baseline_hard_violation_rate:.4f} "
-        f"candidate_hard_violation_rate={gamed['probe'].candidate_hard_violation_rate:.4f}",
+        f"baseline_structural_violation_rate="
+        f"{gamed['probe'].baseline_structural_violation_rate:.4f} "
+        f"candidate_structural_violation_rate="
+        f"{gamed['probe'].candidate_structural_violation_rate:.4f}",
         f"blocked={gamed['probe'].blocked} reason={gamed['probe'].reason}",
         f"promotion steps: {[(s.stage, s.action) for s in gamed['promotion'].steps]}",
         f"final_status={gamed['promotion'].final_status} weights_set={gamed['weights_set']}",
@@ -115,8 +118,10 @@ def main() -> int:
         "## Honest candidate (higher total reward, violation rate flat)",
         f"baseline_mean_reward={honest['probe'].baseline_mean_reward:.4f} "
         f"candidate_mean_reward={honest['probe'].candidate_mean_reward:.4f}",
-        f"baseline_hard_violation_rate={honest['probe'].baseline_hard_violation_rate:.4f} "
-        f"candidate_hard_violation_rate={honest['probe'].candidate_hard_violation_rate:.4f}",
+        f"baseline_structural_violation_rate="
+        f"{honest['probe'].baseline_structural_violation_rate:.4f} "
+        f"candidate_structural_violation_rate="
+        f"{honest['probe'].candidate_structural_violation_rate:.4f}",
         f"blocked={honest['probe'].blocked}",
         f"promotion steps: {[(s.stage, s.action) for s in honest['promotion'].steps]}",
         f"final_status={honest['promotion'].final_status} weights_set={honest['weights_set']}",

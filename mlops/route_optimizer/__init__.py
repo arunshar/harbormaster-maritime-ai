@@ -10,12 +10,13 @@ claim in ``docs/HONESTY.md`` (a test in
 ``mlops/tests/test_route_optimizer_service.py`` pins the isolation).
 
 Composition:
-- ``vendored_kl``: the ``AdaptiveKLController`` (and ``cosine_lr``) from
-  an earlier reinforcement-learning repository of mine, vendored with a provenance header,
-  not imported.
-- ``ppo``: the ``PpoTrainer``/``PpoConfig`` SHAPE from the earlier RL
-  repository's ``ppo_trainer.py``, retargeted from LM fine-tuning to a tabular numpy
-  policy over the corridor graph (zero GPU, zero torch).
+- ``kl_schedule``: the ``AdaptiveKLController`` (and ``cosine_lr``) adapted
+  from an earlier reinforcement-learning repository of mine, with a
+  provenance header, not imported.
+- ``ppo``: the ``PpoTrainer``/``PpoConfig`` shape from an earlier
+  reinforcement-learning project of mine, retargeted from language-model
+  fine-tuning to a tabular numpy policy over the corridor graph (zero GPU,
+  zero torch).
 - ``graph``/``reward``: the Phase 3 ``corridor_graph_nodes`` /
   ``corridor_graph_edges`` Iceberg tables as the action space, with
   ``coverage_minus_fuel`` as the reward.

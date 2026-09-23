@@ -76,7 +76,7 @@
       "n0_n1": 0.55551364778883
     },
     "kl_crosscheck": {
-      "note": "AdaptiveKLController vendored bit-for-bit from an earlier reinforcement-learning repository of mine; the test re-derives the update by the explicit formula and asserts equality on these inputs (same spirit as Phase 3's sklearn/scipy cross-checks).",
+      "note": "AdaptiveKLController adapted from an earlier reinforcement-learning repository of mine; the test re-derives the update by the explicit formula and asserts equality on these inputs (same spirit as Phase 3's sklearn/scipy cross-checks).",
       "kl_coef_0": 0.2,
       "target": 6.0,
       "horizon": 10000,

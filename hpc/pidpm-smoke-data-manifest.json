@@ -5,7 +5,7 @@
   "dataset": {
     "anomaly_ratio": 0.0,
     "batch_size": 64,
-    "generator": "app.components.pidpm.data.TrajectoryDataset",
+    "generator": "pidpm.data.TrajectoryDataset",
     "n": 256,
     "seed": 0,
     "seq_len": 24
@@ -19,42 +19,42 @@
   },
   "source_files": [
     {
-      "path": "app/components/pidpm/config.py",
+      "path": "pidpm/config.py",
       "sha256": "<sha256>",
       "size": 2949
     },
     {
-      "path": "app/components/pidpm/data.py",
+      "path": "pidpm/data.py",
       "sha256": "<sha256>",
       "size": 3955
     },
     {
-      "path": "app/components/pidpm/diffusion.py",
+      "path": "pidpm/diffusion.py",
       "sha256": "<sha256>",
       "size": 5897
     },
     {
-      "path": "app/components/pidpm/model.py",
+      "path": "pidpm/model.py",
       "sha256": "<sha256>",
       "size": 3821
     },
     {
-      "path": "app/components/pidpm/physics.py",
+      "path": "pidpm/physics.py",
       "sha256": "<sha256>",
       "size": 4276
     },
     {
-      "path": "app/components/pidpm/scoring.py",
+      "path": "pidpm/scoring.py",
       "sha256": "<sha256>",
       "size": 5002
     },
     {
-      "path": "app/components/pidpm/train.py",
+      "path": "pidpm/train.py",
       "sha256": "<sha256>",
       "size": 3147
     },
     {
-      "path": "app/components/pidpm/eval.py",
+      "path": "pidpm/eval.py",
       "sha256": "<sha256>",
       "size": 3602
     }

@@ -54,7 +54,7 @@ def disagreement_rate(
     anomalous, so this should always hold; a row where it does not is
     excluded as a data inconsistency rather than silently miscounted).
     Rows with label in {None, "ambiguous"} are excluded, exactly as
-    the from_hitl_jsonl of an earlier reinforcement-learning repository of
+    the HITL-loading logic in an earlier reinforcement-learning project of
     mine excludes ambiguous items. "incorrect"
     means the operator disagreed with the model's anomalous verdict."""
     rows = list(rows)

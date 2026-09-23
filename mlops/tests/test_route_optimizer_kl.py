@@ -1,12 +1,13 @@
-"""Gate 5.7: the vendored AdaptiveKLController / cosine_lr cross-check.
+"""Gate 5.7: the AdaptiveKLController / cosine_lr regression test.
 
-The earlier reinforcement-learning repository of mine that vendored_kl.py comes
-from is not a test dependency (it is an external mirror), so the "bit-for-bit
-against the real source" check is realized the same way Phase 3 cross-checks AUC
-against sklearn: re-derive the published update rule inline from its definition
-and assert the vendored controller matches it exactly on fixed inputs, plus the
-pinned fixture values. Because vendored_kl.py is a byte-for-byte copy (its
-provenance header), matching the re-derived formula IS matching the source.
+The earlier reinforcement-learning repository of mine that kl_schedule.py
+was adapted from is not a test dependency (it is an external mirror), so
+this is an ordinary numeric-equivalence test, the same way Phase 3
+cross-checks AUC against sklearn: re-derive the published update rule
+inline from its definition, and assert the controller matches it exactly
+on fixed inputs, plus the pinned fixture values. This protects against a
+future edit silently changing the controller's behavior. It does not by
+itself prove anything about a specific external source.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from mlops.route_optimizer.vendored_kl import AdaptiveKLController, cosine_lr
+from mlops.route_optimizer.kl_schedule import AdaptiveKLController, cosine_lr
 
 PINS = json.loads((Path(__file__).parent.parent / "fixtures" / "expectations.json").read_text())[
     "ppo_stretch_expectations"
@@ -42,7 +43,7 @@ def test_update_matches_rederived_and_pinned(case):
     expected = _rederive(
         PINS["kl_coef_0"], current_kl, PINS["target"], PINS["horizon"], PINS["n_steps"]
     )
-    assert c.kl_coef == expected  # bit-for-bit, not approx
+    assert c.kl_coef == expected  # exact match, not approx
     assert c.kl_coef == PINS[case]["kl_coef_1"]
 
 

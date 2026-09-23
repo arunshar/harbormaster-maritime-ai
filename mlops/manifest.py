@@ -1,6 +1,6 @@
 """GPU cluster -> S3 one-way, content-addressed checkpoint manifest (Phase 3, gate 3.4).
 
-Extends the `app/services/checkpoint.py` shape from an earlier
+Extends the shape of a checkpoint-manifest module from an earlier
 reinforcement-learning repository of mine (content-addressed
 `runs/<run_id>/step_<n:07d>/<sha256[:16]>.bin` + an appended `MANIFEST.jsonl`
 line) with the lineage fields neither of the earlier RL repository's two existing checkpoint

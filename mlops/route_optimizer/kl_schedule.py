@@ -1,19 +1,18 @@
-"""Vendored from an earlier reinforcement-learning repository of mine (gate 5.7).
+"""Adapted from an earlier reinforcement-learning project of mine (gate 5.7).
 
-Provenance: a local checkout of the earlier RL repository's trainer
-module. The code is copied here and is not imported.
-
-The `AdaptiveKLController` update rule is copied verbatim, byte for byte in
-every arithmetic expression, so the cross-check test
-(``mlops/tests/test_route_optimizer_kl.py``) can assert bit-for-bit equality
-against the source on a fixed input, in the same spirit as Phase 3's
-AUC/CRPS cross-checks against sklearn/scipy. `cosine_lr` is copied verbatim
-too, since it is pure math. The only two departures from the source: the
-gradient-clipping helper is not vendored, because it wraps a torch call the
-numpy retarget does not need (its own global-norm clip lives in ``ppo.py``),
-and the torch import goes with it. Do not change this file casually. A
-change here breaks the bit-for-bit provenance claim and needs a fresh
-cross-check run.
+This project reuses the AdaptiveKLController update rule and the cosine_lr
+schedule from that project, unimported. A small numeric-equivalence test
+(``mlops/tests/test_route_optimizer_kl.py``) pins the controller's output
+against pinned fixture values and against the published update rule
+re-derived from its definition, in the same spirit as Phase 3's AUC/CRPS
+cross-checks against sklearn/scipy. This is an ordinary regression test: it
+protects against a future edit silently changing the controller's behavior,
+and it does not by itself prove anything about a specific external source.
+The only two departures from the source: the gradient-clipping helper is not
+vendored, because it wraps a torch call the numpy retarget does not need
+(its own global-norm clip lives in ``ppo.py``), and the torch import goes
+with it. Do not change this file casually. A change here needs a fresh
+regression-test run.
 
 Ziegler et al. (2019), Fine-Tuning Language Models from Human Preferences
 (arXiv:1909.08593, Section 2.2), introduced this adaptive KL controller, and

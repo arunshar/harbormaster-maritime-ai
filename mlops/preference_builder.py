@@ -1,7 +1,7 @@
 """Phase 4 gate 4.4: preference-triple builder + storage.
 
 Ports (vendors, does not cross-repo-import) the preference-triple logic
-from the earlier RL repository's reward module: the same filter over
+from an earlier reinforcement-learning project of mine: the same filter over
 {"correct","incorrect"} rows, and the same argmax-reward,
 margin-gated, at-most-K-1-pairs shape for the synthesized triples. It
 also ports that module's `RewardWeights`/`RewardBreakdown` dataclasses,
@@ -17,8 +17,8 @@ column; a disagreement (`label == "incorrect"`) yields
 `chosen = the operator's side` (not anomalous), `rejected = the model's side`
 (anomalous). "correct" rows have no chosen/rejected difference to extract
 (agreement, not a preference signal) and are not turned into triples;
-"ambiguous"/unlabeled rows are excluded exactly as the earlier RL
-repository's own preference-triple filter excludes ambiguous rows.
+"ambiguous"/unlabeled rows are excluded exactly as that earlier project's
+own preference-triple filter excludes ambiguous rows.
 """
 
 from __future__ import annotations
@@ -30,13 +30,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-# ---- vendored verbatim from the earlier RL repository's reward module ----
+# ---- reused from an earlier reinforcement-learning project of mine ----
 
 
 @dataclass(frozen=True)
 class RewardWeights:
-    hard: float = 5.0
-    soft: float = 1.0
+    structural: float = 5.0
+    shaping: float = 1.0
     data: float = 1.0
     pref: float = 1.0
 
@@ -44,22 +44,22 @@ class RewardWeights:
 @dataclass(frozen=True)
 class RewardBreakdown:
     total: float
-    hard: float
-    soft: float
+    structural: float
+    shaping: float
     data: float
     pref: float
 
     def to_panel(self) -> dict[str, float]:
         return {
             "reward/total": self.total,
-            "reward/hard": self.hard,
-            "reward/soft": self.soft,
+            "reward/structural": self.structural,
+            "reward/shaping": self.shaping,
             "reward/data": self.data,
             "reward/pref": self.pref,
         }
 
 
-ZERO_REWARD = RewardBreakdown(total=0.0, hard=0.0, soft=0.0, data=0.0, pref=0.0)
+ZERO_REWARD = RewardBreakdown(total=0.0, structural=0.0, shaping=0.0, data=0.0, pref=0.0)
 
 # ---- the Harbormaster-extended preference-triple schema (docs/phases/ ----
 # ---- PHASE_4_SKETCH.md's locked JSON shape) --------------------------------
@@ -81,7 +81,7 @@ class PreferenceTriple:
     rejected: PreferenceArm
     preference_source: Literal["hitl_verdict", "reward_synthesized"]
     hitl_operator: str | None
-    hard_violation_in_either_arm: bool
+    structural_violation_in_either_arm: bool
     created_at: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -92,8 +92,8 @@ def _default_now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _hard_violation(*rewards: RewardBreakdown, threshold: float) -> bool:
-    return any(r.hard < threshold for r in rewards)
+def _structural_violation(*rewards: RewardBreakdown, threshold: float) -> bool:
+    return any(r.structural < threshold for r in rewards)
 
 
 def build_from_hitl(
@@ -101,7 +101,7 @@ def build_from_hitl(
     contexts: Mapping[str, Mapping[str, Any]],
     *,
     hitl_threshold: float,
-    hard_violation_threshold: float = 0.0,
+    structural_violation_threshold: float = 0.0,
     now: Callable[[], str] = _default_now,
 ) -> list[PreferenceTriple]:
     """rows: hitl_queue-shaped mappings (trace_id, mmsi, score, label,
@@ -139,8 +139,8 @@ def build_from_hitl(
                 rejected=rejected,
                 preference_source="hitl_verdict",
                 hitl_operator=row.get("reviewer"),
-                hard_violation_in_either_arm=_hard_violation(
-                    chosen_reward, rejected_reward, threshold=hard_violation_threshold
+                structural_violation_in_either_arm=_structural_violation(
+                    chosen_reward, rejected_reward, threshold=structural_violation_threshold
                 ),
                 created_at=now(),
             )
@@ -152,19 +152,20 @@ def synthesize_from_reward(
     candidates: Iterable[tuple[str, int, list[str], list[RewardBreakdown]]],
     *,
     margin_min: float = 0.5,
-    hard_violation_threshold: float = 0.0,
+    structural_violation_threshold: float = 0.0,
     contexts: Mapping[str, Mapping[str, Any]] | None = None,
     now: Callable[[], str] = _default_now,
 ) -> list[PreferenceTriple]:
     """candidates: (trace_id, mmsi, verdict_options, rewards) tuples, one per
     RL-eligible trace with K candidate verdicts/trajectories and their
-    RewardBreakdowns. The earlier RL repository's real synthesize_from_reward semantics,
-    unchanged: chosen = argmax(reward.total), rejected = each other
-    candidate whose margin to chosen is >= margin_min, at most K-1 pairs per
-    trace. hard_violation_in_either_arm audits the locked invariant (the
-    unbounded, 5.0-weighted hard term should make a violating arm lose on
-    total; this field lets the reward-hacking probe check that claim rather
-    than assume it)."""
+    RewardBreakdowns. This module builds each pair the way an earlier
+    reinforcement-learning project of mine does. It picks the candidate with
+    the highest total reward as chosen, then pairs it against every other
+    candidate whose reward margin clears margin_min, capped at K-1 pairs per
+    trace. structural_violation_in_either_arm audits the locked invariant (the
+    unbounded, 5.0-weighted structural term should make a violating arm lose
+    on total; this field lets the reward-hacking probe check that claim
+    rather than assume it)."""
     contexts = contexts or {}
     triples: list[PreferenceTriple] = []
     for trace_id, mmsi, verdicts, rewards in candidates:
@@ -193,8 +194,8 @@ def synthesize_from_reward(
                     rejected=rejected,
                     preference_source="reward_synthesized",
                     hitl_operator=None,
-                    hard_violation_in_either_arm=_hard_violation(
-                        rewards[top], rewards[j], threshold=hard_violation_threshold
+                    structural_violation_in_either_arm=_structural_violation(
+                        rewards[top], rewards[j], threshold=structural_violation_threshold
                     ),
                     created_at=now(),
                 )

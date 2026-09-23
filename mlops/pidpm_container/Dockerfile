@@ -1,8 +1,8 @@
 # Illustrative, NOT built or run in this repo (Phase 3, gate 3.6).
 #
-# Wraps the frozen PiDpmScorer.log_prob(trajectory) -> float contract
-# (app/components/pidpm_scorer.py in an earlier reinforcement-learning
-# repository of mine) as a SageMaker inference container. SageMaker async inference containers use
+# Wraps the frozen PiDpmScorer.log_prob(trajectory) -> float contract (a
+# module in an earlier reinforcement-learning repository of mine) as a
+# SageMaker inference container. SageMaker async inference containers use
 # the SAME real-time /ping + /invocations contract as synchronous endpoints;
 # "async" is SageMaker's own orchestration (queue via S3, not synchronous
 # HTTP), invisible to the container itself.
@@ -22,8 +22,8 @@ WORKDIR /opt/pidpm
 # into the build context before `docker build`, so this COPY has something
 # to copy. Left as an explicit, documented manual step rather than a
 # submodule, since the earlier RL repository is separate and independently versioned.
-COPY rl_upstream_src/app/components/pidpm /opt/pidpm/pidpm
-COPY rl_upstream_src/app/components/pidpm/requirements.txt /opt/pidpm/requirements.txt
+COPY rl_upstream_src/pidpm /opt/pidpm/pidpm
+COPY rl_upstream_src/pidpm/requirements.txt /opt/pidpm/requirements.txt
 COPY server.py /opt/pidpm/server.py
 
 RUN pip install --no-cache-dir -r requirements.txt "flask>=3.0" "gunicorn>=22.0"

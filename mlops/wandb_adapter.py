@@ -1,8 +1,8 @@
 """W&B experiment/lineage adapter (Phase 3, gate 3.5).
 
-Mirrors exactly the `observability/wandb_adapter.py` shape from an earlier
-reinforcement-learning repository of mine: a thin,
-lazy adapter that only calls the real `wandb` SDK if `WANDB_API_KEY` is set
+Mirrors the shape of a logging adapter from an earlier reinforcement-learning
+repository of mine: a thin, lazy adapter that only calls the real `wandb` SDK
+if `WANDB_API_KEY` is set
 in the environment, otherwise logs locally via structlog so unit tests never
 need network access or an API key. Extended here with `log_lineage`, which
 neither the earlier RL repository's adapter nor either of its two checkpoint conventions

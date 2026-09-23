@@ -48,7 +48,7 @@ def test_build_from_hitl_drops_rows_below_the_model_implied_threshold():
 def test_build_from_hitl_defaults_to_zero_reward_and_no_violation():
     rows = [{"trace_id": "t1", "mmsi": 1, "score": 0.9, "label": "incorrect", "reviewer": "bob"}]
     triples = build_from_hitl(rows, contexts={}, hitl_threshold=HITL_THRESHOLD, now=_fixed_now)
-    assert triples[0].hard_violation_in_either_arm is False
+    assert triples[0].structural_violation_in_either_arm is False
     assert triples[0].chosen.reward.total == 0.0
 
 
@@ -63,9 +63,13 @@ def test_build_from_hitl_attaches_the_supplied_context():
 
 def test_synthesize_from_reward_chooses_argmax_and_gates_on_margin():
     rewards = [
-        RewardBreakdown(total=10.0, hard=0.0, soft=0.0, data=0.0, pref=0.0),
-        RewardBreakdown(total=9.6, hard=0.0, soft=0.0, data=0.0, pref=0.0),  # margin 0.4 < 0.5
-        RewardBreakdown(total=5.0, hard=0.0, soft=0.0, data=0.0, pref=0.0),  # margin 5.0 >= 0.5
+        RewardBreakdown(total=10.0, structural=0.0, shaping=0.0, data=0.0, pref=0.0),
+        RewardBreakdown(
+            total=9.6, structural=0.0, shaping=0.0, data=0.0, pref=0.0
+        ),  # margin 0.4 < 0.5
+        RewardBreakdown(
+            total=5.0, structural=0.0, shaping=0.0, data=0.0, pref=0.0
+        ),  # margin 5.0 >= 0.5
     ]
     candidates = [("t1", 1, ["a", "b", "c"], rewards)]
     triples = synthesize_from_reward(candidates, margin_min=0.5, now=_fixed_now)
@@ -75,17 +79,18 @@ def test_synthesize_from_reward_chooses_argmax_and_gates_on_margin():
 
 
 def test_synthesize_from_reward_flags_a_kinematically_violating_winner():
-    # a candidate that wins on total reward despite a hard violation: exactly
-    # what hard_violation_in_either_arm exists to let the probe audit.
+    # a candidate that wins on total reward despite a structural violation:
+    # exactly what structural_violation_in_either_arm exists to let the
+    # probe audit.
     rewards = [
         RewardBreakdown(
-            total=10.0, hard=-1.0, soft=5.0, data=5.0, pref=5.0
+            total=10.0, structural=-1.0, shaping=5.0, data=5.0, pref=5.0
         ),  # violates, still wins
-        RewardBreakdown(total=1.0, hard=0.5, soft=0.5, data=0.0, pref=0.0),
+        RewardBreakdown(total=1.0, structural=0.5, shaping=0.5, data=0.0, pref=0.0),
     ]
     candidates = [("t1", 1, ["gamed", "honest"], rewards)]
     triples = synthesize_from_reward(candidates, margin_min=0.5, now=_fixed_now)
-    assert triples[0].hard_violation_in_either_arm is True
+    assert triples[0].structural_violation_in_either_arm is True
 
 
 def test_synthesize_from_reward_skips_mismatched_lengths():

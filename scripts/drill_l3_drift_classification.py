@@ -13,7 +13,7 @@ drill's convention (L1/L2, gate 3.8):
   3. Concept drift: HITL disagreement rate above the alert threshold ->
      routes to the preference pipeline, and build_from_hitl on the same
      synthetic hitl_queue rows produces schema-valid triples with
-     hard_violation_in_either_arm computed.
+     structural_violation_in_either_arm computed.
   4. The false-alarm row (the sketch's explicit cross-validation rule):
      proxy 1 (near-threshold + high epistemic variance) is elevated on a
      real volume of traces, but proxy 2 (disagreement) stays flat -> NOT
@@ -116,7 +116,7 @@ def scenario_concept_drift_routes_to_preference_pipeline() -> tuple[bool, str]:
         and decision.response == "preference_pipeline"
         and len(triples) == expected_disagreements
         and all(t.preference_source == "hitl_verdict" for t in triples)
-        and all(isinstance(t.hard_violation_in_either_arm, bool) for t in triples)
+        and all(isinstance(t.structural_violation_in_either_arm, bool) for t in triples)
     )
     return ok, (
         f"category={decision.category} response={decision.response} "

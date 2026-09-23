@@ -104,7 +104,7 @@ def test_c_rising_disagreement_routes_to_preference_pipeline_with_valid_triples(
     assert len(triples) == 10  # every "incorrect" row
     for t in triples:
         assert t.preference_source == "hitl_verdict"
-        assert isinstance(t.hard_violation_in_either_arm, bool)
+        assert isinstance(t.structural_violation_in_either_arm, bool)
 
     # proxy 1 alone (elevated, but disagreement flat) must NOT trigger concept drift
     proxy1_flags = [
@@ -124,10 +124,17 @@ def test_c_rising_disagreement_routes_to_preference_pipeline_with_valid_triples(
 
 def test_d_gamed_candidate_blocked_before_shadow_honest_candidate_passes():
     baseline = [
-        RewardBreakdown(total=5.0, hard=0.5, soft=1.0, data=1.0, pref=1.0) for _ in range(10)
+        RewardBreakdown(total=5.0, structural=0.5, shaping=1.0, data=1.0, pref=1.0)
+        for _ in range(10)
     ]
-    gamed = [RewardBreakdown(total=8.0, hard=-1.0, soft=3.0, data=3.0, pref=3.0) for _ in range(10)]
-    honest = [RewardBreakdown(total=8.0, hard=0.5, soft=1.5, data=1.5, pref=1.5) for _ in range(10)]
+    gamed = [
+        RewardBreakdown(total=8.0, structural=-1.0, shaping=3.0, data=3.0, pref=3.0)
+        for _ in range(10)
+    ]
+    honest = [
+        RewardBreakdown(total=8.0, structural=0.5, shaping=1.5, data=1.5, pref=1.5)
+        for _ in range(10)
+    ]
 
     passing_gate = HoldoutGateResult(
         auc=0.95, crps=0.2, calibration_ratio=1.0, passed=True, failures=[]
